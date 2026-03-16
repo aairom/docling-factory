@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: docling-factory-cpu
+  namespace: docling-factory
+  labels:
+    app: docling-factory
+    version: cpu
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 7860
+    protocol: TCP
+    name: http
+  selector:
+    app: docling-factory
+    version: cpu
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docling-factory-gpu
+  namespace: docling-factory
+  labels:
+    app: docling-factory
+    version: gpu
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 7860
+    protocol: TCP
+    name: http
+  selector:
+    app: docling-factory
+    version: gpu
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docling-factory
+  namespace: docling-factory
+  labels:
+    app: docling-factory
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 7860
+    protocol: TCP
+    name: http
+  selector:
+    app: docling-factory
+
+# Made with Bob

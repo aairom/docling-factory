@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: docling-factory-ingress
+  namespace: docling-factory
+  labels:
+    app: docling-factory
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - docling-factory.example.com
+    secretName: docling-factory-tls
+  rules:
+  - host: docling-factory.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: docling-factory
+            port:
+              number: 80
+
+# Made with Bob

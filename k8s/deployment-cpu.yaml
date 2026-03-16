@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docling-factory-cpu
+  namespace: docling-factory
+  labels:
+    app: docling-factory
+    version: cpu
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: docling-factory
+      version: cpu
+  template:
+    metadata:
+      labels:
+        app: docling-factory
+        version: cpu
+    spec:
+      containers:
+      - name: docling-factory
+        image: docling-factory:cpu-latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 7860
+          name: http
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: docling-factory-config
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: input-storage
+          mountPath: /app/input
+        - name: output-storage
+          mountPath: /app/output
+        - name: logs-storage
+          mountPath: /app/logs
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 7860
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 7860
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+      volumes:
+      - name: input-storage
+        persistentVolumeClaim:
+          claimName: docling-factory-input-pvc
+      - name: output-storage
+        persistentVolumeClaim:
+          claimName: docling-factory-output-pvc
+      - name: logs-storage
+        persistentVolumeClaim:
+          claimName: docling-factory-logs-pvc
+
+# Made with Bob

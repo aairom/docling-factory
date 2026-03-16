@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: docling-factory-config
+  namespace: docling-factory
+  labels:
+    app: docling-factory
+data:
+  GRADIO_SERVER_NAME: "0.0.0.0"
+  GRADIO_SERVER_PORT: "7860"
+  PYTHONUNBUFFERED: "1"
+
+# Made with Bob

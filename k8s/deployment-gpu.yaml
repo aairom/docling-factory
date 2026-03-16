@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docling-factory-gpu
+  namespace: docling-factory
+  labels:
+    app: docling-factory
+    version: gpu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: docling-factory
+      version: gpu
+  template:
+    metadata:
+      labels:
+        app: docling-factory
+        version: gpu
+    spec:
+      containers:
+      - name: docling-factory
+        image: docling-factory:gpu-latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 7860
+          name: http
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: docling-factory-config
+        env:
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "2000m"
+            nvidia.com/gpu: 1
+          limits:
+            memory: "8Gi"
+            cpu: "4000m"
+            nvidia.com/gpu: 1
+        volumeMounts:
+        - name: input-storage
+          mountPath: /app/input
+        - name: output-storage
+          mountPath: /app/output
+        - name: logs-storage
+          mountPath: /app/logs
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 7860
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 7860
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+      volumes:
+      - name: input-storage
+        persistentVolumeClaim:
+          claimName: docling-factory-input-pvc
+      - name: output-storage
+        persistentVolumeClaim:
+          claimName: docling-factory-output-pvc
+      - name: logs-storage
+        persistentVolumeClaim:
+          claimName: docling-factory-logs-pvc
+      nodeSelector:
+        accelerator: nvidia-gpu
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+
+# Made with Bob
