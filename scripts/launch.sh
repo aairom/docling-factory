@@ -168,7 +168,12 @@ export DOCLING_USE_GPU=$GPU
 export DOCLING_SHARE=$SHARE
 
 # Build the Python command
-PYTHON_CMD="python app.py"
+# Use app_enhanced.py if it exists, otherwise fall back to app.py
+if [ -f "app_enhanced.py" ]; then
+    PYTHON_CMD="python app_enhanced.py"
+else
+    PYTHON_CMD="python app.py"
+fi
 
 # Display startup information
 echo ""

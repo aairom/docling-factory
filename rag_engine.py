@@ -183,6 +183,7 @@ class RAGEngine:
         )
         
         self.index_name = index_name
+        self.ollama_base_url = ollama_base_url
         
         # Initialize Ollama components
         self.embeddings = OllamaEmbeddings(model=embedding_model, base_url=ollama_base_url)
@@ -486,7 +487,8 @@ class RAGEngine:
         
         # Check Ollama and models
         try:
-            models = ollama.list()
+            client = ollama.Client(host=self.ollama_base_url)
+            models = client.list()
             model_names = [m['name'] for m in models.get('models', [])]
             
             health["ollama"] = True

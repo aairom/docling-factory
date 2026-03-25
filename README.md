@@ -123,6 +123,12 @@ A powerful, production-ready document parsing and RAG (Retrieval-Augmented Gener
 
 ## 🚀 Quick Start
 
+> **⚠️ IMPORTANT**: Always run the app using `./scripts/launch.sh` or activate the virtual environment first!
+>
+> See **[START_HERE.md](START_HERE.md)** for the correct way to run the app.
+>
+> Having issues? Check **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** for solutions.
+
 ### Prerequisites
 
 - Python 3.8 or higher

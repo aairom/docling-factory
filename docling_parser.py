@@ -65,6 +65,53 @@ class DoclingParser:
         
         logger.info(f"DoclingParser initialized (GPU: {use_gpu})")
     
+    def _validate_ocr_engine(self, ocr_engine: str) -> str:
+        """
+        Validate and potentially fallback OCR engine selection.
+        
+        Args:
+            ocr_engine: Requested OCR engine
+            
+        Returns:
+            Validated OCR engine (may fallback to 'none' if unavailable)
+        """
+        if ocr_engine == 'none':
+            return ocr_engine
+            
+        if ocr_engine == 'easyocr':
+            try:
+                import easyocr
+                # Test if EasyOCR can be initialized
+                reader = easyocr.Reader(['en'], verbose=False)
+                logger.info("EasyOCR validation successful")
+                return ocr_engine
+            except Exception as e:
+                logger.warning(f"EasyOCR not available: {e}. Falling back to no OCR.")
+                return 'none'
+                
+        elif ocr_engine == 'tesseract':
+            try:
+                import pytesseract
+                # Test if Tesseract is available
+                pytesseract.get_tesseract_version()
+                logger.info("Tesseract OCR validation successful")
+                return ocr_engine
+            except Exception as e:
+                logger.warning(f"Tesseract OCR not available: {e}. Falling back to no OCR.")
+                return 'none'
+                
+        elif ocr_engine == 'ocrmac':
+            import platform
+            if platform.system() == 'Darwin':  # macOS
+                logger.info("macOS Vision OCR selected")
+                return ocr_engine
+            else:
+                logger.warning("macOS Vision OCR only available on macOS. Falling back to no OCR.")
+                return 'none'
+        
+        logger.warning(f"Unknown OCR engine '{ocr_engine}'. Falling back to no OCR.")
+        return 'none'
+    
     def _configure_ocr_pipeline(self, ocr_engine: str = 'none', force_ocr: bool = False) -> PdfPipelineOptions:
         """
         Configure PDF pipeline with OCR options.
@@ -76,17 +123,26 @@ class DoclingParser:
         Returns:
             Configured PdfPipelineOptions
         """
+        # Validate OCR engine availability
+        validated_engine = self._validate_ocr_engine(ocr_engine)
+        
         pipeline_options = PdfPipelineOptions()
-        pipeline_options.do_ocr = (ocr_engine != 'none')
+        pipeline_options.do_ocr = (validated_engine != 'none')
         
         # Enable image generation for figures and pictures
         pipeline_options.generate_picture_images = True
         
-        if ocr_engine == 'easyocr':
-            pipeline_options.ocr_options = EasyOcrOptions(force_full_page_ocr=force_ocr)
-        elif ocr_engine == 'tesseract':
+        if validated_engine == 'easyocr':
+            pipeline_options.ocr_options = EasyOcrOptions(
+                force_full_page_ocr=force_ocr,
+                suppress_mps_warnings=True  # Suppress MPS warnings on macOS
+            )
+        elif validated_engine == 'tesseract':
             pipeline_options.ocr_options = TesseractOcrOptions(force_full_page_ocr=force_ocr)
         # ocrmac is default on macOS, no special configuration needed
+        
+        if validated_engine != ocr_engine:
+            logger.info(f"OCR engine changed from '{ocr_engine}' to '{validated_engine}' due to availability")
         
         return pipeline_options
     

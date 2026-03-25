@@ -35,6 +35,35 @@ OPENSEARCH_PORT = int(os.getenv("OPENSEARCH_PORT", "9200"))
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 
+def check_ocr_availability():
+    """Check which OCR engines are available."""
+    available_engines = [("No OCR", "none")]
+    
+    # Check EasyOCR
+    try:
+        import easyocr
+        available_engines.append(("EasyOCR (Deep Learning) ✓", "easyocr"))
+    except ImportError:
+        available_engines.append(("EasyOCR (Deep Learning) ✗ Not Installed", "easyocr_unavailable"))
+    
+    # Check Tesseract
+    try:
+        import pytesseract
+        pytesseract.get_tesseract_version()
+        available_engines.append(("Tesseract OCR (Traditional) ✓", "tesseract"))
+    except Exception:
+        available_engines.append(("Tesseract OCR (Traditional) ✗ Not Installed", "tesseract_unavailable"))
+    
+    # Check macOS Vision
+    import platform
+    if platform.system() == 'Darwin':
+        available_engines.append(("macOS Vision OCR ✓", "ocrmac"))
+    else:
+        available_engines.append(("macOS Vision OCR ✗ macOS Only", "ocrmac_unavailable"))
+    
+    return available_engines
+
+
 def initialize_parser(use_gpu: bool):
     """Initialize or reinitialize the parser with GPU settings."""
     global parser
@@ -91,11 +120,18 @@ def get_available_ollama_models() -> List[str]:
         return ["llama3.2:latest"]  # Fallback to default
 
 
-def parse_single_file(file, use_gpu, markdown_check, html_check, json_check, doctags_check,
+def parse_single_file(files, use_gpu, markdown_check, html_check, json_check, doctags_check,
                      export_figures, export_multimodal, ocr_engine, force_ocr, index_for_rag):
-    """Parse a single uploaded file with selected options and optionally index for RAG."""
-    if file is None:
-        return "No file uploaded", "", "", "", ""
+    """Parse uploaded file(s) with selected options and optionally index for RAG."""
+    if files is None:
+        return "⚠️ No file uploaded", "", "", "", ""
+    
+    # Convert single file to list for uniform processing
+    if not isinstance(files, list):
+        files = [files]
+    
+    if len(files) == 0:
+        return "⚠️ No file uploaded", "", "", "", ""
     
     # Determine output formats
     output_formats = []
@@ -112,89 +148,122 @@ def parse_single_file(file, use_gpu, markdown_check, html_check, json_check, doc
         return "⚠️ Please select at least one output format", "", "", "", ""
     
     try:
+        # Validate OCR engine selection
+        if ocr_engine.endswith('_unavailable'):
+            return (
+                f"⚠️ **OCR Engine Not Available**\n\nThe selected OCR engine is not installed or unavailable. "
+                f"Please select a different OCR engine or choose 'No OCR'.",
+                "", "", "", ""
+            )
+        
         # Initialize parser if needed
         if parser is None or parser.use_gpu != use_gpu:
             initialize_parser(use_gpu)
         
-        progress_messages = []
+        # Process multiple files
+        all_results = []
+        combined_markdown = []
+        combined_html = []
+        combined_json = []
+        all_progress = []
+        total_indexed = 0
         
-        def progress_callback(msg):
-            progress_messages.append(msg)
+        for idx, file in enumerate(files):
+            progress_messages = []
+            
+            def progress_callback(msg):
+                progress_messages.append(msg)
+            
+            file_progress = f"\n{'='*60}\n📄 Processing file {idx+1}/{len(files)}: {Path(file.name).name}\n{'='*60}\n"
+            all_progress.append(file_progress)
+            
+            # Parse the document
+            result = parser.parse_document(
+                file.name,
+                output_formats,
+                export_figures=export_figures,
+                export_multimodal=export_multimodal,
+                ocr_engine=ocr_engine,
+                force_ocr=force_ocr,
+                progress_callback=progress_callback
+            )
+            
+            all_progress.extend(progress_messages)
+            
+            if result["status"] == "success":
+                all_results.append(result)
+                
+                # Read the generated outputs
+                if 'markdown' in result['outputs']:
+                    with open(result['outputs']['markdown'], 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        combined_markdown.append(f"# {Path(result['input_file']).name}\n\n{content}")
+                
+                if 'html' in result['outputs']:
+                    with open(result['outputs']['html'], 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        combined_html.append(f"<!-- {Path(result['input_file']).name} -->\n{content}")
+                
+                if 'json' in result['outputs']:
+                    with open(result['outputs']['json'], 'r', encoding='utf-8') as f:
+                        content = json.load(f)
+                        combined_json.append({Path(result['input_file']).name: content})
+                
+                # Index for RAG if requested
+                if index_for_rag and rag_engine and 'markdown' in result['outputs']:
+                    try:
+                        with open(result['outputs']['markdown'], 'r', encoding='utf-8') as f:
+                            markdown_content = f.read()
+                        index_result = rag_engine.index_document(
+                            file_path=file.name,
+                            content=markdown_content,
+                            metadata={"parsed_at": result['timestamp']}
+                        )
+                        total_indexed += index_result['chunks_indexed']
+                        all_progress.append(f"📚 RAG Indexing: {index_result['chunks_indexed']} chunks indexed")
+                    except Exception as e:
+                        all_progress.append(f"⚠️ RAG Indexing failed: {str(e)}")
+            else:
+                all_progress.append(f"❌ Error: {result['error']}")
         
-        # Parse the document
-        result = parser.parse_document(
-            file.name, 
-            output_formats,
-            export_figures=export_figures,
-            export_multimodal=export_multimodal,
-            ocr_engine=ocr_engine,
-            force_ocr=force_ocr,
-            progress_callback=progress_callback
-        )
+        progress_text = "\n".join(all_progress)
         
-        progress_text = "\n".join(progress_messages)
+        if len(all_results) == 0:
+            return "❌ **All files failed to parse**", "", "", "", progress_text
         
-        if result["status"] == "success":
-            markdown_content = ""
-            html_content = ""
-            json_content = ""
-            
-            # Read the generated outputs
-            if 'markdown' in result['outputs']:
-                with open(result['outputs']['markdown'], 'r', encoding='utf-8') as f:
-                    markdown_content = f.read()
-            
-            if 'html' in result['outputs']:
-                with open(result['outputs']['html'], 'r', encoding='utf-8') as f:
-                    html_content = f.read()
-            
-            if 'json' in result['outputs']:
-                with open(result['outputs']['json'], 'r', encoding='utf-8') as f:
-                    json_content = json.dumps(json.load(f), indent=2)
-            
-            # Index for RAG if requested
-            if index_for_rag and rag_engine and markdown_content:
-                try:
-                    index_result = rag_engine.index_document(
-                        file_path=file.name,
-                        content=markdown_content,
-                        metadata={"parsed_at": result['timestamp']}
-                    )
-                    progress_text += f"\n\n📚 RAG Indexing: {index_result['chunks_indexed']} chunks indexed"
-                except Exception as e:
-                    progress_text += f"\n\n⚠️ RAG Indexing failed: {str(e)}"
-            
-            # Build status message
-            status_msg = f"""
-✅ **Successfully parsed document!**
+        # Build combined status message
+        status_msg = f"""
+✅ **Successfully parsed {len(all_results)} of {len(files)} document(s)!**
 
-- **Input File:** {Path(result['input_file']).name}
+"""
+        
+        for idx, result in enumerate(all_results, 1):
+            status_msg += f"""
+### Document {idx}: {Path(result['input_file']).name}
 - **Pages:** {result.get('page_count', 'N/A')}
 - **Timestamp:** {result['timestamp']}
 - **Output Formats:** {', '.join(result['formats'])}
 """
-            
             if result.get('figure_count', 0) > 0:
                 status_msg += f"- **Figures Extracted:** {result['figure_count']}\n"
             
             if result.get('ocr_engine'):
                 status_msg += f"- **OCR Engine:** {result['ocr_engine']}\n"
-            
-            if index_for_rag:
-                status_msg += f"- **Indexed for RAG:** Yes\n"
-            
-            status_msg += "\n**Generated Files:**\n"
-            for fmt, path in result['outputs'].items():
-                status_msg += f"\n- **{fmt.upper()}:** `{path}`"
-            
-            return status_msg, markdown_content, html_content, json_content, progress_text
-        else:
-            error_msg = f"❌ **Error parsing document:**\n\n{result['error']}"
-            return error_msg, "", "", "", progress_text
+        
+        if index_for_rag and total_indexed > 0:
+            status_msg += f"\n📚 **Total RAG Chunks Indexed:** {total_indexed}\n"
+        
+        # Combine outputs
+        markdown_output = "\n\n---\n\n".join(combined_markdown)
+        html_output = "\n\n".join(combined_html)
+        json_output = json.dumps(combined_json, indent=2) if combined_json else ""
+        
+        return status_msg, markdown_output, html_output, json_output, progress_text
             
     except Exception as e:
         logger.error(f"Error in parse_single_file: {str(e)}")
-        return f"❌ **Error:** {str(e)}", "", "", "", ""
+        import traceback
+        return f"❌ **Error:** {str(e)}\n\n{traceback.format_exc()}", "", "", "", ""
 
 
 def chat_with_documents(query: str, llm_model: str, temperature: float, top_k: int):
@@ -220,8 +289,9 @@ def chat_with_documents(query: str, llm_model: str, temperature: float, top_k: i
             for source in sources:
                 answer += f"- {Path(source).name}\n"
         
-        # Add to chat history in Gradio Chatbot format: list of [user_msg, bot_msg] pairs
-        chat_history.append([query, answer])
+        # Add to chat history in Gradio 6.x Chatbot format: list of message dicts
+        chat_history.append({"role": "user", "content": query})
+        chat_history.append({"role": "assistant", "content": answer})
         
         return "", chat_history
         
@@ -336,7 +406,7 @@ export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318  # For local collector
 
 
 # Create the enhanced Gradio interface
-with gr.Blocks(title="Docling Parser with RAG", theme=gr.themes.Soft()) as app:
+with gr.Blocks(title="Docling Parser with RAG") as app:
     gr.Markdown("""
     # 📄 Docling Document Parser with RAG
     
@@ -373,18 +443,16 @@ with gr.Blocks(title="Docling Parser with RAG", theme=gr.themes.Soft()) as app:
         
         # OCR settings
         gr.Markdown("### 🔍 OCR Settings")
+        available_ocr_engines = check_ocr_availability()
         with gr.Row():
             ocr_engine = gr.Dropdown(
-                choices=[
-                    ("No OCR", "none"),
-                    ("EasyOCR (Deep Learning)", "easyocr"),
-                    ("Tesseract OCR (Traditional)", "tesseract"),
-                    ("macOS Vision OCR", "ocrmac")
-                ],
+                choices=available_ocr_engines,
                 value="none",
-                label="OCR Engine"
+                label="OCR Engine",
+                info="✓ = Available, ✗ = Not installed/unavailable"
             )
-            force_ocr = gr.Checkbox(label="Force Full Page OCR", value=False)
+            force_ocr = gr.Checkbox(label="Force Full Page OCR", value=False,
+                                   info="Force OCR even if text is extractable")
     
     with gr.Tabs() as tabs:
         # Tab 1: Document Upload & Parse
@@ -394,10 +462,11 @@ with gr.Blocks(title="Docling Parser with RAG", theme=gr.themes.Soft()) as app:
             with gr.Row():
                 with gr.Column(scale=1):
                     file_input = gr.File(
-                        label="Upload Document",
-                        file_types=[".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".html", ".md", ".txt", ".csv"]
+                        label="Upload Document(s)",
+                        file_types=[".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".html", ".md", ".txt", ".csv"],
+                        file_count="multiple"
                     )
-                    parse_btn = gr.Button("🚀 Parse Document", variant="primary", size="lg")
+                    parse_btn = gr.Button("🚀 Parse Document(s)", variant="primary", size="lg")
                 
                 with gr.Column(scale=2):
                     status_output = gr.Markdown(label="Status")
@@ -468,7 +537,10 @@ with gr.Blocks(title="Docling Parser with RAG", theme=gr.themes.Soft()) as app:
                     indexed_docs = gr.Markdown()
                 
                 with gr.Column(scale=2):
-                    chatbot = gr.Chatbot(label="Chat", height=500)
+                    chatbot = gr.Chatbot(
+                        label="Chat",
+                        height=500
+                    )
                     query_input = gr.Textbox(
                         label="Ask a question",
                         placeholder="What is this document about?",

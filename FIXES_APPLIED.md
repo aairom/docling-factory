@@ -99,5 +99,87 @@ Both critical issues have been fixed and tested. The RAG system is now fully fun
 - ✅ Document indexing working
 - ✅ Chat functionality ready
 
+#### 3. ✅ Chat History Format Fix
+**Problem:** Gradio Chatbot component expects list of `[user_msg, bot_msg]` pairs
+**Error:** `Data incompatible with messages format`
+
+**Solution:** Changed chat history format from dict to list of pairs
+- **File:** `app_enhanced.py` lines 200-233
+- **Change:** Format as `[[user_msg, bot_msg], ...]` instead of `[{"role": "user", "content": "..."}, ...]`
+
+#### 4. ✅ EasyOCR Validation & Error Handling
+**Problem:** EasyOCR error message despite proper installation
+**Error:** `EasyOCR is not installed. Please install it via pip install easyocr`
+
+**Solution:** Added robust OCR engine validation system
+- **File:** `docling_parser.py` - Added `_validate_ocr_engine()` method
+- **File:** `app_enhanced.py` - Added `check_ocr_availability()` and UI indicators
+- **Features:**
+  - Validates OCR engines before use (EasyOCR, Tesseract, macOS Vision)
+  - Shows availability status in UI with ✓/✗ indicators
+  - Automatic fallback to "No OCR" if engine unavailable
+  - Clear error messages for unavailable engines
+
+#### 5. ✅ Dependency Installation Fix (Python 3.12)
+**Problem:** numpy version conflict during fresh installation
+**Error:** `Could not find a version that satisfies the requirement numpy==1.21.2`
+
+**Solution:** Fixed dependency order and version constraints
+- **File:** `requirements.txt` - Updated numpy to `>=1.24.0,<2.0.0` and reordered dependencies
+- **File:** `scripts/install_dependencies.sh` - New automated installation script
+- **Process:**
+  1. Install numpy first (Python 3.12 compatible)
+  2. Install opencv-python-headless (uses pre-built wheel)
+  3. Install PyTorch/torchvision
+  4. Install remaining dependencies
+  5. Verify all critical packages
+
+#### 6. ✅ Missing traceloop-sdk Dependency
+**Problem:** ModuleNotFoundError for traceloop module
+**Error:** `ModuleNotFoundError: No module named 'traceloop'`
+
+**Solution:** Updated and installed traceloop-sdk
+- **File:** `requirements.txt` - Updated to `traceloop-sdk>=0.30.0`
+- **Installed:** traceloop-sdk 0.53.3 with all OpenTelemetry instrumentation
+
+### Installation Instructions:
+
+**IMPORTANT:** Use a virtual environment to avoid conflicts with globally installed packages (vllm, granite-tsfm, etc.)
+
+**For fresh installations**, use the automated script:
+```bash
+chmod +x scripts/install_dependencies.sh
+./scripts/install_dependencies.sh
+```
+
+The script will:
+1. Create/activate a virtual environment (`venv/`)
+2. Install compatible versions: `setuptools<80` (for vllm/PyTorch compatibility)
+3. Install dependencies in the correct order
+4. Verify all packages
+
+**Or install manually** in a virtual environment:
+```bash
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies in order
+pip install --upgrade pip "setuptools<80" wheel
+pip install "numpy>=1.24.0,<2.0.0"
+pip install "opencv-python-headless>=4.8.0,<5.0.0"
+pip install -r requirements.txt
+```
+
+**Important Notes:**
+- Always activate the venv before running: `source venv/bin/activate`
+- setuptools<80 required for vllm compatibility
+- Virtual environment isolates from global package conflicts
+
+### Available OCR Engines:
+- ✅ **EasyOCR** (Deep Learning) - Installed and validated
+- ✅ **Tesseract OCR** (Traditional) - Installed and validated
+- ✅ **macOS Vision OCR** - Available on macOS
+
 ---
 Made with Bob

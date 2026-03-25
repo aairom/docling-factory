@@ -12,17 +12,18 @@ python-docx>=1.1.0
 PyPDF2>=3.0.0
 pillow>=10.0.0
 
-# Data processing (required before OCR)
-numpy>=1.24.0,<2.5.0
+# Data processing (MUST be installed first for Python 3.12 compatibility)
+numpy>=1.24.0,<2.0.0
 pandas>=2.0.0
 
 # OCR engines for full page OCR
 # EasyOCR and its dependencies
-easyocr>=1.7.0
+# Note: Install opencv-python-headless BEFORE easyocr to avoid build issues
+opencv-python-headless>=4.8.0,<5.0.0  # Required by EasyOCR
 torch>=2.0.0  # Required by EasyOCR
 torchvision>=0.15.0  # Required by EasyOCR
-opencv-python-headless>=4.8.0,<5.0.0  # Required by EasyOCR
 scikit-image>=0.21.0  # Required by EasyOCR
+easyocr>=1.7.0
 
 # Tesseract OCR wrapper
 pytesseract>=0.3.10
@@ -59,7 +60,7 @@ faiss-cpu>=1.7.4  # FAISS for vector similarity (CPU version)
 opentelemetry-api>=1.20.0
 opentelemetry-sdk>=1.20.0
 opentelemetry-instrumentation>=0.41b0
-traceloop-sdk>=0.15.0  # OpenLLMetry SDK
+traceloop-sdk>=0.30.0  # OpenLLMetry SDK (updated version)
 
 # Additional utilities for RAG
 tiktoken>=0.5.0  # Token counting
