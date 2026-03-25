@@ -1,6 +1,6 @@
-# Architecture Documentation
+# Architecture Documentation - Enhanced Edition
 
-This document provides a detailed overview of the Docling Document Parser application architecture.
+This document provides a detailed overview of the enhanced Docling Document Parser application architecture with advanced features.
 
 ## System Overview
 
@@ -11,19 +11,29 @@ graph TB
     end
     
     subgraph "Presentation Layer"
-        GRADIO[Gradio Web Interface<br/>Port: 7860]
+        GRADIO[Gradio Web Interface<br/>Port: 7860<br/>Enhanced UI]
     end
     
     subgraph "Application Layer"
-        APP[app.py<br/>UI Logic & Routing]
-        PARSER[docling_parser.py<br/>Core Parser Module]
+        APP[app.py<br/>UI Logic & Routing<br/>Feature Controls]
+        PARSER[docling_parser.py<br/>Enhanced Parser Module]
     end
     
     subgraph "Processing Layer"
         DOCLING[Docling Library<br/>Document Conversion]
-        OCR[OCR Engine]
+        OCR_EASY[EasyOCR<br/>Deep Learning]
+        OCR_TESS[Tesseract OCR<br/>Traditional]
+        OCR_MAC[macOS Vision<br/>Native]
         TABLE[Table Detection]
         LAYOUT[Layout Analysis]
+        FIG_EXT[Figure Extraction]
+        MULTI[Multimodal Export]
+    end
+    
+    subgraph "Format Handlers"
+        CSV_H[CSV Handler]
+        XBRL_H[XBRL Handler]
+        PDF_H[PDF Handler]
     end
     
     subgraph "Hardware Layer"
@@ -34,6 +44,7 @@ graph TB
     subgraph "Storage Layer"
         INPUT[input/<br/>Source Documents]
         OUTPUT[output/<br/>Parsed Results]
+        FIGURES[output/figures/<br/>Extracted Images]
         LOGS[logs/<br/>Application Logs]
     end
     
@@ -41,13 +52,21 @@ graph TB
     GRADIO <--> APP
     APP <--> PARSER
     PARSER <--> DOCLING
-    DOCLING --> OCR
+    PARSER <--> CSV_H
+    PARSER <--> XBRL_H
+    PARSER <--> PDF_H
+    DOCLING --> OCR_EASY
+    DOCLING --> OCR_TESS
+    DOCLING --> OCR_MAC
     DOCLING --> TABLE
     DOCLING --> LAYOUT
+    DOCLING --> FIG_EXT
+    DOCLING --> MULTI
     DOCLING <--> CPU
     DOCLING -.->|Optional| GPU
     PARSER --> INPUT
     PARSER --> OUTPUT
+    FIG_EXT --> FIGURES
     APP --> LOGS
     
     style USER fill:#e1f5ff
@@ -55,9 +74,17 @@ graph TB
     style APP fill:#fff3e0
     style PARSER fill:#fff3e0
     style DOCLING fill:#f3e5f5
+    style OCR_EASY fill:#e8f5e9
+    style OCR_TESS fill:#e8f5e9
+    style OCR_MAC fill:#e8f5e9
+    style FIG_EXT fill:#fff9c4
+    style MULTI fill:#fff9c4
+    style CSV_H fill:#f3e5f5
+    style XBRL_H fill:#f3e5f5
     style GPU fill:#f3e5f5,stroke-dasharray: 5 5
     style INPUT fill:#e8f5e9
     style OUTPUT fill:#e8f5e9
+    style FIGURES fill:#fff9c4
     style LOGS fill:#e8f5e9
 ```
 
@@ -76,23 +103,34 @@ graph TB
 
 ### 2. Application Layer
 
-#### app.py (Main Application)
-- **Purpose**: UI logic and user interaction handling
+#### app.py (Main Application - Enhanced)
+- **Purpose**: UI logic and user interaction handling with advanced features
 - **Key Functions**:
-  - `parse_single_file()`: Handle individual file uploads
-  - `parse_batch_files()`: Coordinate batch processing
+  - `parse_single_file()`: Handle individual file uploads with all features
+  - `parse_batch_files()`: Coordinate batch processing with progress tracking
   - `list_output_files()`: Manage output directory
   - `clear_outputs()`: Clean old files
   - `launch_app()`: Application entry point
+- **New Features**:
+  - Output format selection (Markdown, HTML, JSON, DocTags)
+  - Figure extraction toggle
+  - Multimodal export toggle
+  - OCR engine selection dropdown
+  - Force OCR checkbox
 
-#### docling_parser.py (Core Parser)
-- **Purpose**: Document parsing and conversion logic
+#### docling_parser.py (Enhanced Core Parser)
+- **Purpose**: Advanced document parsing and conversion logic
 - **Key Classes**:
-  - `DoclingParser`: Main parser class
+  - `DoclingParser`: Enhanced main parser class
 - **Key Methods**:
-  - `parse_document()`: Parse single document
-  - `parse_batch()`: Parse multiple documents
-  - `get_supported_formats()`: List supported formats
+  - `parse_document()`: Parse with OCR, figures, multimodal support
+  - `parse_batch()`: Batch processing with all features
+  - `_configure_ocr_pipeline()`: Configure OCR settings
+  - `_export_figures()`: Extract and save figures
+  - `_parse_csv_file()`: Handle CSV conversion
+  - `_parse_xbrl_file()`: Handle XBRL conversion
+  - `get_supported_formats()`: List all supported formats
+  - `get_ocr_engines()`: List available OCR engines
   - `clear_output_directory()`: Cleanup utility
 
 ### 3. Processing Layer
@@ -186,11 +224,11 @@ edf-docling/
 ├── requirements.txt            # CPU dependencies
 ├── requirements-gpu.txt        # GPU dependencies
 ├── README.md                   # Main documentation
-├── QUICKSTART.md              # Quick start guide
 ├── .gitignore                 # Git ignore rules
 │
 ├── docs/                      # Documentation
 │   ├── README.md              # Detailed docs
+│   ├── QUICKSTART.md          # Quick start guide
 │   ├── workflows.md           # Workflow diagrams
 │   └── ARCHITECTURE.md        # This file
 │

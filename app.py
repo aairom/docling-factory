@@ -1,7 +1,12 @@
 """
-Docling Document Parser - Gradio UI Application
-A user-friendly interface for parsing documents using Docling library.
-Enhanced with multiple output formats, progress tracking, and docling-parse integration.
+Docling Document Parser - Enhanced Gradio UI Application
+A comprehensive interface for parsing documents using Docling library with:
+- Multiple output formats (Markdown, HTML, JSON, DocTags)
+- Multimodal export with embedded images
+- Figure extraction
+- Full page OCR with multiple engine options
+- XBRL document conversion
+- CSV file conversion
 """
 
 import gradio as gr
@@ -27,9 +32,10 @@ def initialize_parser(use_gpu: bool):
     return f"Parser initialized with {'GPU' if use_gpu else 'CPU'} mode"
 
 
-def parse_single_file(file, use_gpu, markdown_check, html_check, json_check):
+def parse_single_file(file, use_gpu, markdown_check, html_check, json_check, doctags_check,
+                     export_figures, export_multimodal, ocr_engine, force_ocr):
     """
-    Parse a single uploaded file with selected output formats.
+    Parse a single uploaded file with selected options.
     
     Args:
         file: Uploaded file object from Gradio
@@ -37,6 +43,11 @@ def parse_single_file(file, use_gpu, markdown_check, html_check, json_check):
         markdown_check: Boolean for Markdown output
         html_check: Boolean for HTML output
         json_check: Boolean for JSON output
+        doctags_check: Boolean for DocTags output
+        export_figures: Boolean to extract figures
+        export_multimodal: Boolean for multimodal export
+        ocr_engine: OCR engine selection
+        force_ocr: Boolean to force full page OCR
         
     Returns:
         Tuple of (status_message, markdown_content, html_content, json_output, progress_text)
@@ -52,6 +63,8 @@ def parse_single_file(file, use_gpu, markdown_check, html_check, json_check):
         output_formats.append('html')
     if json_check:
         output_formats.append('json')
+    if doctags_check:
+        output_formats.append('doctags')
     
     if not output_formats:
         return "⚠️ Please select at least one output format", "", "", "", ""
@@ -66,8 +79,16 @@ def parse_single_file(file, use_gpu, markdown_check, html_check, json_check):
         def progress_callback(msg):
             progress_messages.append(msg)
         
-        # Parse the document
-        result = parser.parse_document(file.name, output_formats, progress_callback)
+        # Parse the document with all options
+        result = parser.parse_document(
+            file.name, 
+            output_formats,
+            export_figures=export_figures,
+            export_multimodal=export_multimodal,
+            ocr_engine=ocr_engine,
+            force_ocr=force_ocr,
+            progress_callback=progress_callback
+        )
         
         progress_text = "\n".join(progress_messages)
         
@@ -97,9 +118,18 @@ def parse_single_file(file, use_gpu, markdown_check, html_check, json_check):
 - **Pages:** {result.get('page_count', 'N/A')}
 - **Timestamp:** {result['timestamp']}
 - **Output Formats:** {', '.join(result['formats'])}
-
-**Generated Files:**
 """
+            
+            if result.get('figure_count', 0) > 0:
+                status_msg += f"- **Figures Extracted:** {result['figure_count']}\n"
+            
+            if result.get('ocr_engine'):
+                status_msg += f"- **OCR Engine:** {result['ocr_engine']}\n"
+            
+            if result.get('force_ocr'):
+                status_msg += f"- **Full Page OCR:** Enabled\n"
+            
+            status_msg += "\n**Generated Files:**\n"
             for fmt, path in result['outputs'].items():
                 status_msg += f"\n- **{fmt.upper()}:** `{path}`"
             
@@ -113,7 +143,8 @@ def parse_single_file(file, use_gpu, markdown_check, html_check, json_check):
         return f"❌ **Error:** {str(e)}", "", "", "", ""
 
 
-def parse_batch_files(use_gpu, markdown_check, html_check, json_check, progress=gr.Progress()):
+def parse_batch_files(use_gpu, markdown_check, html_check, json_check, doctags_check,
+                     export_figures, export_multimodal, ocr_engine, force_ocr, progress=gr.Progress()):
     """
     Parse all files in the input directory with progress tracking.
     
@@ -122,6 +153,11 @@ def parse_batch_files(use_gpu, markdown_check, html_check, json_check, progress=
         markdown_check: Boolean for Markdown output
         html_check: Boolean for HTML output
         json_check: Boolean for JSON output
+        doctags_check: Boolean for DocTags output
+        export_figures: Boolean to extract figures
+        export_multimodal: Boolean for multimodal export
+        ocr_engine: OCR engine selection
+        force_ocr: Boolean to force full page OCR
         progress: Gradio progress tracker
         
     Returns:
@@ -135,6 +171,8 @@ def parse_batch_files(use_gpu, markdown_check, html_check, json_check, progress=
         output_formats.append('html')
     if json_check:
         output_formats.append('json')
+    if doctags_check:
+        output_formats.append('doctags')
     
     if not output_formats:
         return "⚠️ **Warning:** Please select at least one output format"
@@ -162,12 +200,22 @@ def parse_batch_files(use_gpu, markdown_check, html_check, json_check, progress=
             if total > 0:
                 progress((current / total), desc=msg)
         
-        # Process files
-        results = parser.parse_batch(input_dir, output_formats, progress_callback=progress_callback)
+        # Process files with all options
+        results = parser.parse_batch(
+            input_dir, 
+            output_formats,
+            export_figures=export_figures,
+            export_multimodal=export_multimodal,
+            ocr_engine=ocr_engine,
+            force_ocr=force_ocr,
+            progress_callback=progress_callback
+        )
         
         # Generate summary
         successful = [r for r in results if r["status"] == "success"]
         failed = [r for r in results if r["status"] == "error"]
+        
+        total_figures = sum(r.get('figure_count', 0) for r in successful)
         
         summary = f"""
 ## 📊 Batch Processing Complete
@@ -177,9 +225,16 @@ def parse_batch_files(use_gpu, markdown_check, html_check, json_check, progress=
 - **Successful:** {len(successful)} ✅
 - **Failed:** {len(failed)} ❌
 - **Output Formats:** {', '.join(output_formats)}
-
-### Processed Files
+- **Figures Extracted:** {total_figures}
 """
+        
+        if ocr_engine != 'none':
+            summary += f"- **OCR Engine:** {ocr_engine}\n"
+        
+        if force_ocr:
+            summary += f"- **Full Page OCR:** Enabled\n"
+        
+        summary += "\n### Processed Files\n"
         
         for result in results:
             status_icon = "✅" if result["status"] == "success" else "❌"
@@ -190,10 +245,14 @@ def parse_batch_files(use_gpu, markdown_check, html_check, json_check, progress=
                 summary += f" - {result.get('page_count', 'N/A')} pages"
                 formats_list = ', '.join(result.get('formats', []))
                 summary += f" ({formats_list})"
+                if result.get('figure_count', 0) > 0:
+                    summary += f" - {result['figure_count']} figures"
             else:
                 summary += f" - Error: {result.get('error', 'Unknown error')}"
         
         summary += f"\n\n### Output Location\nAll parsed documents are saved in the `output/` directory with timestamps."
+        if total_figures > 0:
+            summary += f"\nFigures are saved in `output/figures/` subdirectories."
         
         progress(1.0, desc="Batch processing complete!")
         
@@ -240,42 +299,79 @@ def clear_outputs(older_than_days):
         return f"❌ Error: {str(e)}"
 
 
-# Create the Gradio interface
-with gr.Blocks(title="Docling Document Parser") as app:
+# Create the enhanced Gradio interface
+with gr.Blocks(title="Docling Document Parser - Enhanced", theme=gr.themes.Soft()) as app:
     gr.Markdown("""
-    # 📄 Docling Document Parser
+    # 📄 Docling Document Parser - Enhanced Edition
     
-    Parse documents using the powerful Docling library with **docling-parse** integration. 
-    Supports PDF, DOCX, PPTX, XLSX, HTML, and more with multiple output formats.
+    Parse documents with advanced features including **multimodal export**, **figure extraction**, 
+    **OCR support**, **XBRL conversion**, and **CSV processing**.
     
-    Choose between **Individual Upload** mode or **Batch Processing** mode.
+    Supports PDF, DOCX, PPTX, XLSX, HTML, CSV, XBRL, and more with multiple output formats.
     """)
     
-    # GPU toggle (global setting)
-    with gr.Row():
-        gpu_toggle = gr.Checkbox(
-            label="Enable GPU Acceleration",
-            value=False,
-            info="Enable this if you have CUDA-compatible GPU and installed GPU requirements"
-        )
-    
-    # Output format selection (global)
-    gr.Markdown("### 📤 Output Formats")
-    with gr.Row():
-        markdown_check = gr.Checkbox(label="Markdown (.md)", value=True)
-        html_check = gr.Checkbox(label="HTML (.html)", value=True)
-        json_check = gr.Checkbox(label="JSON (.json)", value=True)
+    # Global settings
+    with gr.Accordion("⚙️ Global Settings", open=True):
+        with gr.Row():
+            gpu_toggle = gr.Checkbox(
+                label="Enable GPU Acceleration",
+                value=False,
+                info="Enable if you have CUDA-compatible GPU"
+            )
+        
+        # Output format selection
+        gr.Markdown("### 📤 Output Formats")
+        with gr.Row():
+            markdown_check = gr.Checkbox(label="Markdown (.md)", value=True)
+            html_check = gr.Checkbox(label="HTML (.html)", value=True)
+            json_check = gr.Checkbox(label="JSON (.json)", value=True)
+            doctags_check = gr.Checkbox(label="DocTags (.txt)", value=False, 
+                                       info="Document structure tags")
+        
+        # Advanced features
+        gr.Markdown("### 🚀 Advanced Features")
+        with gr.Row():
+            export_figures = gr.Checkbox(
+                label="Extract Figures",
+                value=False,
+                info="Save images and figures separately"
+            )
+            export_multimodal = gr.Checkbox(
+                label="Multimodal Export",
+                value=False,
+                info="Embed images in Markdown output"
+            )
+        
+        # OCR settings
+        gr.Markdown("### 🔍 OCR Settings")
+        with gr.Row():
+            ocr_engine = gr.Dropdown(
+                choices=[
+                    ("No OCR", "none"),
+                    ("EasyOCR (Deep Learning)", "easyocr"),
+                    ("Tesseract OCR (Traditional)", "tesseract"),
+                    ("macOS Vision OCR", "ocrmac")
+                ],
+                value="none",
+                label="OCR Engine",
+                info="Select OCR engine for text extraction"
+            )
+            force_ocr = gr.Checkbox(
+                label="Force Full Page OCR",
+                value=False,
+                info="Apply OCR even if text is extractable"
+            )
     
     with gr.Tabs() as tabs:
         # Tab 1: Individual Upload
         with gr.Tab("📤 Individual Upload"):
-            gr.Markdown("Upload a single document to parse it immediately.")
+            gr.Markdown("Upload a single document to parse it immediately with all selected features.")
             
             with gr.Row():
                 with gr.Column(scale=1):
                     file_input = gr.File(
                         label="Upload Document",
-                        file_types=[".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".html", ".md", ".txt"]
+                        file_types=[".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".html", ".md", ".txt", ".csv", ".xbrl", ".xml"]
                     )
                     parse_btn = gr.Button("🚀 Parse Document", variant="primary", size="lg")
                 
@@ -307,18 +403,19 @@ with gr.Blocks(title="Docling Document Parser") as app:
             
             parse_btn.click(
                 fn=parse_single_file,
-                inputs=[file_input, gpu_toggle, markdown_check, html_check, json_check],
+                inputs=[file_input, gpu_toggle, markdown_check, html_check, json_check, doctags_check,
+                       export_figures, export_multimodal, ocr_engine, force_ocr],
                 outputs=[status_output, markdown_output, html_output, json_output, progress_output]
             )
         
         # Tab 2: Batch Processing
         with gr.Tab("📦 Batch Processing"):
             gr.Markdown("""
-            Process all documents in the `input/` directory at once.
+            Process all documents in the `input/` directory at once with all selected features.
             
             **Instructions:**
             1. Place your documents in the `input/` folder
-            2. Select desired output formats above
+            2. Configure settings above (output formats, OCR, figure extraction, etc.)
             3. Click the "Process Batch" button
             4. Check the `output/` folder for results
             """)
@@ -328,7 +425,8 @@ with gr.Blocks(title="Docling Document Parser") as app:
             
             batch_btn.click(
                 fn=parse_batch_files,
-                inputs=[gpu_toggle, markdown_check, html_check, json_check],
+                inputs=[gpu_toggle, markdown_check, html_check, json_check, doctags_check,
+                       export_figures, export_multimodal, ocr_engine, force_ocr],
                 outputs=batch_output
             )
         
@@ -366,21 +464,37 @@ with gr.Blocks(title="Docling Document Parser") as app:
     gr.Markdown("""
     ---
     ### 📚 Supported Formats
-    **Input:** PDF, DOCX, DOC, PPTX, XLSX, HTML, MD, TXT  
-    **Output:** Markdown (.md), HTML (.html), JSON (.json)
+    **Input:** PDF, DOCX, DOC, PPTX, XLSX, HTML, MD, TXT, CSV, XBRL, XML  
+    **Output:** Markdown (.md), HTML (.html), JSON (.json), DocTags (.txt)
+    
+    ### 🎯 Features
+    - **Multiple Output Formats:** Generate Markdown, HTML, JSON, and DocTags simultaneously
+    - **Figure Extraction:** Extract and save images/figures separately
+    - **Multimodal Export:** Embed images directly in Markdown output
+    - **OCR Support:** Choose from EasyOCR, Tesseract, or macOS Vision OCR
+    - **Force Full Page OCR:** Apply OCR even when text is extractable
+    - **XBRL Conversion:** Parse XBRL financial documents
+    - **CSV Processing:** Convert CSV files to multiple formats
+    - **Batch Processing:** Process multiple documents efficiently
+    - **GPU Acceleration:** Faster processing with CUDA-compatible GPUs
     
     ### 💡 Tips
-    - Select your preferred output formats using the checkboxes above
-    - Parsed documents are saved with timestamps in the `output/` directory
-    - Multiple formats can be generated simultaneously
-    - Use batch mode for processing multiple documents efficiently
-    - Enable GPU acceleration for faster processing (requires GPU setup)
-    - Watch the progress indicator during batch processing
+    - **OCR Engines:**
+      - **EasyOCR:** Best for multilingual documents, uses deep learning
+      - **Tesseract:** Traditional OCR, requires separate installation
+      - **macOS Vision:** Native macOS OCR (macOS only)
+    - **Figure Extraction:** Saves images in `output/figures/` subdirectories
+    - **Multimodal Export:** Embeds images as base64 in Markdown
+    - **Force OCR:** Useful for scanned documents or poor quality PDFs
+    - **CSV Files:** Automatically converted to tables in selected formats
+    - **XBRL Files:** Financial data extracted and formatted
     
     ### 🔗 Powered By
     - [Docling](https://github.com/docling-project/docling) - Document parsing library
-    - [Docling-Parse](https://github.com/docling-project/docling-parse) - Enhanced parsing capabilities
+    - [Docling-Parse](https://github.com/docling-project/docling-parse) - Enhanced parsing
     - [Gradio](https://www.gradio.app/) - Web interface framework
+    - [EasyOCR](https://github.com/JaidedAI/EasyOCR) - Deep learning OCR
+    - [Tesseract](https://github.com/tesseract-ocr/tesseract) - Traditional OCR
     """)
 
 
@@ -395,8 +509,9 @@ def launch_app(share=False, server_port=7860):
     # Ensure directories exist
     Path("input").mkdir(exist_ok=True)
     Path("output").mkdir(exist_ok=True)
+    Path("output/figures").mkdir(exist_ok=True)
     
-    logger.info(f"Launching Docling Parser UI on port {server_port}")
+    logger.info(f"Launching Enhanced Docling Parser UI on port {server_port}")
     
     app.launch(
         share=share,

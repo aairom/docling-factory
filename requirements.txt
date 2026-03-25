@@ -12,10 +12,55 @@ python-docx>=1.1.0
 PyPDF2>=3.0.0
 pillow>=10.0.0
 
+# Data processing (required before OCR)
+numpy>=1.24.0,<2.5.0
+pandas>=2.0.0
+
+# OCR engines for full page OCR
+# EasyOCR and its dependencies
+easyocr>=1.7.0
+torch>=2.0.0  # Required by EasyOCR
+torchvision>=0.15.0  # Required by EasyOCR
+opencv-python-headless>=4.8.0,<5.0.0  # Required by EasyOCR
+scikit-image>=0.21.0  # Required by EasyOCR
+
+# Tesseract OCR wrapper
+pytesseract>=0.3.10
+# Note: Tesseract OCR binary must be installed separately
+# macOS: brew install tesseract
+# Ubuntu: apt-get install tesseract-ocr
+# Windows: Download from https://github.com/UB-Mannheim/tesseract/wiki
+
+# XBRL processing
+python-xbrl>=1.1.1
+lxml>=4.9.0
+
+# CSV/Excel processing
+openpyxl>=3.1.0
+
 # Utilities
 python-dateutil>=2.8.2
 pathlib>=1.0.1
 
-# Optional: For better performance
-numpy>=1.24.0
-pandas>=2.0.0
+# RAG and Vector Database
+opensearch-py>=2.4.0  # OpenSearch Python client
+langchain>=0.1.0  # LangChain for RAG orchestration
+langchain-community>=0.0.20  # Community integrations
+
+# Ollama Integration
+ollama>=0.1.0  # Ollama Python client
+httpx>=0.24.0  # Required for Ollama client
+
+# Embeddings and Vector Operations
+sentence-transformers>=2.2.0  # For fallback embeddings
+faiss-cpu>=1.7.4  # FAISS for vector similarity (CPU version)
+
+# OpenLLMetry - LLM Observability
+opentelemetry-api>=1.20.0
+opentelemetry-sdk>=1.20.0
+opentelemetry-instrumentation>=0.41b0
+traceloop-sdk>=0.15.0  # OpenLLMetry SDK
+
+# Additional utilities for RAG
+tiktoken>=0.5.0  # Token counting
+chromadb>=0.4.0  # Alternative vector store (optional)

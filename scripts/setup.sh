@@ -111,18 +111,32 @@ if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" 
 fi
 
 # Create virtual environment
+VENV_NEEDS_CREATION=false
+
 if [ -d "venv" ]; then
-    print_warning "Virtual environment already exists"
-    read -p "Do you want to recreate it? (y/N) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        print_info "Removing existing virtual environment..."
+    # Check if venv is valid by checking for activate script
+    if [ ! -f "venv/bin/activate" ]; then
+        print_warning "Virtual environment exists but appears corrupted"
+        print_info "Removing corrupted virtual environment..."
         rm -rf venv
-        print_info "Creating new virtual environment..."
-        python3 -m venv venv
-        print_success "Virtual environment created"
+        VENV_NEEDS_CREATION=true
+    else
+        print_warning "Virtual environment already exists"
+        read -p "Do you want to recreate it? (y/N) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            print_info "Removing existing virtual environment..."
+            rm -rf venv
+            VENV_NEEDS_CREATION=true
+        else
+            print_info "Using existing virtual environment"
+        fi
     fi
 else
+    VENV_NEEDS_CREATION=true
+fi
+
+if [ "$VENV_NEEDS_CREATION" = true ]; then
     print_info "Creating virtual environment..."
     python3 -m venv venv
     print_success "Virtual environment created"
