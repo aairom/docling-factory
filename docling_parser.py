@@ -16,7 +16,13 @@ from datetime import datetime
 from typing import List, Dict, Optional, Union, Callable
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions, EasyOcrOptions, TesseractOcrOptions
+from docling.datamodel.pipeline_options import (
+    PdfPipelineOptions,
+    EasyOcrOptions,
+    RapidOcrOptions,
+    TesseractOcrOptions,
+    OcrMacOptions
+)
 from docling_core.types.doc.base import ImageRefMode
 from docling_core.types.doc.document import PictureItem, TableItem
 import json
@@ -39,6 +45,7 @@ class DoclingParser:
     # OCR engine options
     OCR_ENGINES = {
         'none': 'No OCR',
+        'rapidocr': 'RapidOCR (Fast & Accurate) - Recommended',
         'easyocr': 'EasyOCR (Deep Learning)',
         'tesseract': 'Tesseract OCR (Traditional)',
         'ocrmac': 'macOS Vision OCR (macOS only)'
@@ -73,21 +80,29 @@ class DoclingParser:
             ocr_engine: Requested OCR engine
             
         Returns:
-            Validated OCR engine (may fallback to 'none' if unavailable)
+            Validated OCR engine (may fallback to 'rapidocr' or 'none' if unavailable)
         """
         if ocr_engine == 'none':
+            return ocr_engine
+        
+        if ocr_engine == 'rapidocr':
+            # RapidOCR is included with Docling 2.74.0+
+            logger.info("RapidOCR selected (built-in with Docling)")
             return ocr_engine
             
         if ocr_engine == 'easyocr':
             try:
                 import easyocr
-                # Test if EasyOCR can be initialized
-                reader = easyocr.Reader(['en'], verbose=False)
-                logger.info("EasyOCR validation successful")
+                # Just check if the module can be imported
+                # Don't initialize Reader here as it downloads models
+                logger.info("EasyOCR module found")
                 return ocr_engine
+            except ImportError as e:
+                logger.warning(f"EasyOCR not installed: {e}. Falling back to RapidOCR.")
+                return 'rapidocr'
             except Exception as e:
-                logger.warning(f"EasyOCR not available: {e}. Falling back to no OCR.")
-                return 'none'
+                logger.warning(f"EasyOCR error: {e}. Falling back to RapidOCR.")
+                return 'rapidocr'
                 
         elif ocr_engine == 'tesseract':
             try:
@@ -97,8 +112,8 @@ class DoclingParser:
                 logger.info("Tesseract OCR validation successful")
                 return ocr_engine
             except Exception as e:
-                logger.warning(f"Tesseract OCR not available: {e}. Falling back to no OCR.")
-                return 'none'
+                logger.warning(f"Tesseract OCR not available: {e}. Falling back to RapidOCR.")
+                return 'rapidocr'
                 
         elif ocr_engine == 'ocrmac':
             import platform
@@ -106,11 +121,11 @@ class DoclingParser:
                 logger.info("macOS Vision OCR selected")
                 return ocr_engine
             else:
-                logger.warning("macOS Vision OCR only available on macOS. Falling back to no OCR.")
-                return 'none'
+                logger.warning("macOS Vision OCR only available on macOS. Falling back to RapidOCR.")
+                return 'rapidocr'
         
-        logger.warning(f"Unknown OCR engine '{ocr_engine}'. Falling back to no OCR.")
-        return 'none'
+        logger.warning(f"Unknown OCR engine '{ocr_engine}'. Falling back to RapidOCR.")
+        return 'rapidocr'
     
     def _configure_ocr_pipeline(self, ocr_engine: str = 'none', force_ocr: bool = False) -> PdfPipelineOptions:
         """
@@ -132,14 +147,19 @@ class DoclingParser:
         # Enable image generation for figures and pictures
         pipeline_options.generate_picture_images = True
         
-        if validated_engine == 'easyocr':
+        if validated_engine == 'rapidocr':
+            pipeline_options.ocr_options = RapidOcrOptions(
+                force_full_page_ocr=force_ocr
+            )
+        elif validated_engine == 'easyocr':
             pipeline_options.ocr_options = EasyOcrOptions(
                 force_full_page_ocr=force_ocr,
                 suppress_mps_warnings=True  # Suppress MPS warnings on macOS
             )
         elif validated_engine == 'tesseract':
             pipeline_options.ocr_options = TesseractOcrOptions(force_full_page_ocr=force_ocr)
-        # ocrmac is default on macOS, no special configuration needed
+        elif validated_engine == 'ocrmac':
+            pipeline_options.ocr_options = OcrMacOptions(force_full_page_ocr=force_ocr)
         
         if validated_engine != ocr_engine:
             logger.info(f"OCR engine changed from '{ocr_engine}' to '{validated_engine}' due to availability")

@@ -39,6 +39,9 @@ def check_ocr_availability():
     """Check which OCR engines are available."""
     available_engines = [("No OCR", "none")]
     
+    # RapidOCR is built-in with Docling 2.74.0+
+    available_engines.append(("RapidOCR (Fast & Accurate) ✓ Recommended", "rapidocr"))
+    
     # Check EasyOCR
     try:
         import easyocr
@@ -219,8 +222,15 @@ def parse_single_file(files, use_gpu, markdown_check, html_check, json_check, do
                             content=markdown_content,
                             metadata={"parsed_at": result['timestamp']}
                         )
-                        total_indexed += index_result['chunks_indexed']
-                        all_progress.append(f"📚 RAG Indexing: {index_result['chunks_indexed']} chunks indexed")
+                        
+                        # Check if indexing was successful
+                        if index_result.get('status') == 'success':
+                            chunks_indexed = index_result.get('chunks_indexed', 0)
+                            total_indexed += chunks_indexed
+                            all_progress.append(f"📚 RAG Indexing: {chunks_indexed} chunks indexed")
+                        else:
+                            error_msg = index_result.get('error', 'Unknown error')
+                            all_progress.append(f"⚠️ RAG Indexing failed: {error_msg}")
                     except Exception as e:
                         all_progress.append(f"⚠️ RAG Indexing failed: {str(e)}")
             else:
@@ -357,52 +367,153 @@ def get_rag_stats():
         return f"❌ Error: {str(e)}"
 
 
-def get_openllmetry_dashboard():
-    """Get OpenLLMetry observability dashboard info."""
-    dashboard_info = """
-## 🔍 OpenLLMetry Observability Dashboard
+def get_openllmetry_metrics():
+    """Get comprehensive OpenLLMetry metrics from the metrics collector."""
+    if not rag_engine or not hasattr(rag_engine, 'metrics_collector') or rag_engine.metrics_collector is None:
+        return """
+## 🔍 OpenLLMetry Metrics Dashboard
 
-OpenLLMetry provides comprehensive observability for your LLM applications.
+⚠️ **Metrics Not Available**
 
-### Features
-- **Trace LLM Calls:** Monitor all interactions with Ollama models
-- **Performance Metrics:** Track latency, token usage, and costs
-- **Error Tracking:** Identify and debug issues quickly
-- **Request/Response Logging:** Full visibility into prompts and completions
+Please initialize the RAG engine with tracing enabled to start collecting metrics.
 
-### Access Dashboard
-OpenLLMetry traces are automatically collected when RAG is enabled.
-
-To view traces:
-1. Traces are logged to the console
-2. Export to observability platforms (Jaeger, Zipkin, etc.)
-3. Use OpenTelemetry collectors for advanced analysis
-
-### Current Status
+### How to Enable
+1. Go to "Chat with Documents" tab
+2. Check "Enable OpenLLMetry Tracing"
+3. Click "Initialize RAG Engine"
+4. Perform some operations (chat, index documents)
+5. Return here to view metrics
 """
     
-    if rag_engine:
-        dashboard_info += "✅ **Tracing Active** - All RAG operations are being traced\n"
-    else:
-        dashboard_info += "⚠️ **Tracing Inactive** - Initialize RAG to enable tracing\n"
-    
-    dashboard_info += """
-### Traced Operations
-- Document indexing
-- Embedding generation
-- Semantic search
-- LLM generation
-- Chat interactions
+    try:
+        metrics = rag_engine.metrics_collector.get_metrics()
+        
+        # Calculate overall latency stats from all operations
+        latency_stats = metrics.get('latency_stats', {})
+        all_latencies = []
+        for op_stats in latency_stats.values():
+            all_latencies.extend([op_stats.get('min', 0), op_stats.get('max', 0)])
+        
+        min_latency = min(all_latencies) if all_latencies else 0
+        max_latency = max(all_latencies) if all_latencies else 0
+        
+        # Get overall stats
+        avg_latency = metrics.get('avg_latency_ms', 0)
+        
+        # Calculate percentiles from latency_stats
+        p50 = p95 = p99 = 0
+        if latency_stats:
+            # Use first operation's stats as representative
+            first_op = next(iter(latency_stats.values()), {})
+            p50 = first_op.get('p50', 0)
+            p95 = first_op.get('p95', 0)
+            p99 = first_op.get('p99', 0)
+        
+        dashboard = f"""
+## 🔍 OpenLLMetry Metrics Dashboard
 
-### Configuration
-Set environment variables to configure OpenLLMetry:
-```bash
-export TRACELOOP_API_KEY=your_key  # Optional: for Traceloop cloud
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318  # For local collector
-```
+### 📊 Overview
+- **Total Requests:** {metrics['total_requests']}
+- **Total Tokens:** {metrics['total_tokens']:,}
+- **Error Rate:** {metrics['error_rate']:.2f}%
+- **Uptime:** Active
+
+### ⚡ Performance Metrics
+- **Average Latency:** {avg_latency:.2f}ms
+- **Min Latency:** {min_latency:.2f}ms
+- **Max Latency:** {max_latency:.2f}ms
+- **P50 Latency:** {p50:.2f}ms
+- **P95 Latency:** {p95:.2f}ms
+- **P99 Latency:** {p99:.2f}ms
+
+### 🔢 Token Usage
+- **Total Input Tokens:** {metrics.get('total_input_tokens', 0):,}
+- **Total Output Tokens:** {metrics.get('total_output_tokens', 0):,}
+- **Average Tokens per Request:** {metrics['total_tokens'] / max(metrics['total_requests'], 1):.1f}
+
+### 🎯 Operations Breakdown
 """
+        
+        for op, count in metrics['operations'].items():
+            dashboard += f"- **{op}:** {count} requests\n"
+        
+        dashboard += "\n### 🤖 Model Usage\n"
+        for model, count in metrics['models'].items():
+            dashboard += f"- **{model}:** {count} requests\n"
+        
+        dashboard += f"""
+
+### ❌ Errors
+- **Total Errors:** {metrics['error_count']}
+- **Error Rate:** {metrics['error_rate']:.2%}
+
+### 📈 Activity Pattern
+Recent activity by hour:
+"""
+        
+        for hour, count in sorted(metrics['hourly_activity'].items())[-5:]:
+            dashboard += f"- **{hour}:** {count} requests\n"
+        
+        dashboard += """
+
+### 🔧 Actions
+Use the buttons below to manage metrics collection.
+"""
+        
+        return dashboard
+        
+    except Exception as e:
+        logger.error(f"Error getting metrics: {e}")
+        return f"❌ Error retrieving metrics: {str(e)}"
+
+
+def get_recent_traces():
+    """Get recent OpenTelemetry trace spans."""
+    if not rag_engine or not hasattr(rag_engine, 'metrics_collector') or rag_engine.metrics_collector is None:
+        return "⚠️ Metrics collector not available. Initialize RAG with tracing enabled."
     
-    return dashboard_info
+    try:
+        spans = rag_engine.metrics_collector.get_recent_spans(limit=10)
+        
+        if not spans:
+            return "No traces recorded yet. Perform some operations to see traces here."
+        
+        traces_md = "## 🔍 Recent Traces\n\n"
+        
+        for i, span in enumerate(spans, 1):
+            status = "✅" if span.get('status') == 'OK' else "❌"
+            traces_md += f"""
+### {status} Trace {i}: {span.get('name', 'Unknown')}
+- **Operation:** {span.get('operation', 'N/A')}
+- **Duration:** {span.get('duration', 0):.2f}ms
+- **Timestamp:** {span.get('timestamp', 'N/A')}
+- **Status:** {span.get('status', 'Unknown')}
+"""
+            
+            if span.get('attributes'):
+                traces_md += "- **Attributes:**\n"
+                for key, value in list(span['attributes'].items())[:5]:
+                    traces_md += f"  - `{key}`: {value}\n"
+            
+            traces_md += "\n"
+        
+        return traces_md
+        
+    except Exception as e:
+        logger.error(f"Error getting traces: {e}")
+        return f"❌ Error retrieving traces: {str(e)}"
+
+
+def reset_metrics():
+    """Reset all collected metrics."""
+    if not rag_engine or not hasattr(rag_engine, 'metrics_collector') or rag_engine.metrics_collector is None:
+        return "⚠️ Metrics collector not available"
+    
+    try:
+        rag_engine.metrics_collector.reset_metrics()
+        return "✅ Metrics reset successfully"
+    except Exception as e:
+        return f"❌ Error resetting metrics: {str(e)}"
 
 
 # Create the enhanced Gradio interface
@@ -589,13 +700,31 @@ with gr.Blocks(title="Docling Parser with RAG") as app:
         
         # Tab 4: OpenLLMetry Dashboard
         with gr.Tab("🔍 OpenLLMetry"):
-            gr.Markdown("LLM Observability and Tracing Dashboard")
+            gr.Markdown("## LLM Observability and Metrics Dashboard")
             
-            refresh_dashboard_btn = gr.Button("🔄 Refresh Dashboard", variant="primary")
-            dashboard_output = gr.Markdown()
-            
-            refresh_dashboard_btn.click(fn=get_openllmetry_dashboard, outputs=dashboard_output)
-            app.load(fn=get_openllmetry_dashboard, outputs=dashboard_output)
+            with gr.Tabs():
+                with gr.Tab("📊 Metrics"):
+                    gr.Markdown("Real-time metrics from OpenLLMetry tracing")
+                    
+                    with gr.Row():
+                        refresh_metrics_btn = gr.Button("🔄 Refresh Metrics", variant="primary")
+                        reset_metrics_btn = gr.Button("🗑️ Reset Metrics", variant="secondary")
+                    
+                    metrics_output = gr.Markdown()
+                    reset_status = gr.Markdown()
+                    
+                    refresh_metrics_btn.click(fn=get_openllmetry_metrics, outputs=metrics_output)
+                    reset_metrics_btn.click(fn=reset_metrics, outputs=reset_status)
+                    app.load(fn=get_openllmetry_metrics, outputs=metrics_output)
+                
+                with gr.Tab("🔍 Recent Traces"):
+                    gr.Markdown("View recent OpenTelemetry trace spans")
+                    
+                    refresh_traces_btn = gr.Button("🔄 Refresh Traces", variant="primary")
+                    traces_output = gr.Markdown()
+                    
+                    refresh_traces_btn.click(fn=get_recent_traces, outputs=traces_output)
+                    app.load(fn=get_recent_traces, outputs=traces_output)
     
     gr.Markdown("""
     ---

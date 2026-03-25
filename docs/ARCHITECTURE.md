@@ -1,6 +1,6 @@
-# Architecture Documentation - Enhanced Edition
+# Architecture Documentation - RAG Edition
 
-This document provides a detailed overview of the enhanced Docling Document Parser application architecture with advanced features.
+This document provides a detailed overview of the Docling Document Parser application architecture with RAG (Retrieval-Augmented Generation), OpenLLMetry observability, and advanced document processing features.
 
 ## System Overview
 
@@ -11,12 +11,14 @@ graph TB
     end
     
     subgraph "Presentation Layer"
-        GRADIO[Gradio Web Interface<br/>Port: 7860<br/>Enhanced UI]
+        GRADIO[Gradio Web Interface<br/>Port: 7860<br/>RAG-Enhanced UI]
     end
     
     subgraph "Application Layer"
-        APP[app.py<br/>UI Logic & Routing<br/>Feature Controls]
-        PARSER[docling_parser.py<br/>Enhanced Parser Module]
+        APP[app_enhanced.py<br/>UI Logic & RAG Integration]
+        PARSER[docling_parser.py<br/>Document Parser]
+        RAG[rag_engine.py<br/>RAG Engine]
+        METRICS[metrics_collector.py<br/>OpenLLMetry Metrics]
     end
     
     subgraph "Processing Layer"
@@ -28,6 +30,20 @@ graph TB
         LAYOUT[Layout Analysis]
         FIG_EXT[Figure Extraction]
         MULTI[Multimodal Export]
+    end
+    
+    subgraph "RAG Layer"
+        OLLAMA[Ollama<br/>Local LLM Runtime]
+        EMBED[Embedding Models<br/>granite-embedding:30m]
+        LLM[LLM Models<br/>llama3.2, gemma3, etc.]
+        OPENSEARCH[OpenSearch<br/>Vector Database]
+        LANGCHAIN[LangChain<br/>Text Splitting]
+    end
+    
+    subgraph "Observability Layer"
+        OTEL[OpenTelemetry<br/>Tracing]
+        TRACELOOP[Traceloop SDK<br/>OpenLLMetry]
+        COLLECTOR[Metrics Collector<br/>Custom Exporter]
     end
     
     subgraph "Format Handlers"
@@ -46,15 +62,27 @@ graph TB
         OUTPUT[output/<br/>Parsed Results]
         FIGURES[output/figures/<br/>Extracted Images]
         LOGS[logs/<br/>Application Logs]
+        VECTOR[Vector Index<br/>OpenSearch]
     end
     
     USER <-->|HTTP| GRADIO
     GRADIO <--> APP
     APP <--> PARSER
+    APP <--> RAG
+    APP <--> METRICS
     PARSER <--> DOCLING
     PARSER <--> CSV_H
     PARSER <--> XBRL_H
     PARSER <--> PDF_H
+    RAG <--> OLLAMA
+    RAG <--> OPENSEARCH
+    RAG <--> LANGCHAIN
+    OLLAMA --> EMBED
+    OLLAMA --> LLM
+    RAG --> OTEL
+    OTEL --> TRACELOOP
+    OTEL --> COLLECTOR
+    COLLECTOR --> METRICS
     DOCLING --> OCR_EASY
     DOCLING --> OCR_TESS
     DOCLING --> OCR_MAC
@@ -68,11 +96,14 @@ graph TB
     PARSER --> OUTPUT
     FIG_EXT --> FIGURES
     APP --> LOGS
+    OPENSEARCH --> VECTOR
     
     style USER fill:#e1f5ff
     style GRADIO fill:#fff3e0
     style APP fill:#fff3e0
     style PARSER fill:#fff3e0
+    style RAG fill:#ffe0b2
+    style METRICS fill:#ffe0b2
     style DOCLING fill:#f3e5f5
     style OCR_EASY fill:#e8f5e9
     style OCR_TESS fill:#e8f5e9
@@ -81,11 +112,20 @@ graph TB
     style MULTI fill:#fff9c4
     style CSV_H fill:#f3e5f5
     style XBRL_H fill:#f3e5f5
+    style OLLAMA fill:#e1bee7
+    style EMBED fill:#e1bee7
+    style LLM fill:#e1bee7
+    style OPENSEARCH fill:#b2dfdb
+    style LANGCHAIN fill:#b2dfdb
+    style OTEL fill:#ffccbc
+    style TRACELOOP fill:#ffccbc
+    style COLLECTOR fill:#ffccbc
     style GPU fill:#f3e5f5,stroke-dasharray: 5 5
     style INPUT fill:#e8f5e9
     style OUTPUT fill:#e8f5e9
     style FIGURES fill:#fff9c4
     style LOGS fill:#e8f5e9
+    style VECTOR fill:#b2dfdb
 ```
 
 ## Component Details
@@ -96,32 +136,38 @@ graph TB
 - **Technology**: Gradio 4.0+
 - **Port**: 7860 (configurable)
 - **Features**:
-  - Three main tabs: Individual Upload, Batch Processing, Output Management
+  - Five main tabs: Upload & Parse, Chat with Documents, RAG Statistics, OpenLLMetry Dashboard, Output Management
   - Real-time progress tracking
-  - File upload handling
+  - File upload handling with multiple file support
   - Result visualization
+  - Interactive chat interface
+  - Metrics dashboard with real-time updates
 
 ### 2. Application Layer
 
-#### app.py (Main Application - Enhanced)
-- **Purpose**: UI logic and user interaction handling with advanced features
+#### app_enhanced.py (Main Application - RAG Edition)
+- **Purpose**: UI logic, RAG integration, and user interaction handling
 - **Key Functions**:
-  - `parse_single_file()`: Handle individual file uploads with all features
-  - `parse_batch_files()`: Coordinate batch processing with progress tracking
-  - `list_output_files()`: Manage output directory
-  - `clear_outputs()`: Clean old files
+  - `parse_single_file()`: Handle individual/multiple file uploads with RAG indexing
+  - `initialize_rag()`: Initialize RAG engine with selected models
+  - `chat_with_documents()`: Chat interface for RAG queries
+  - `get_rag_stats()`: Display RAG system statistics
+  - `get_openllmetry_metrics()`: Display comprehensive metrics dashboard
+  - `get_recent_traces()`: Show recent OpenTelemetry traces
+  - `reset_metrics()`: Reset collected metrics
   - `launch_app()`: Application entry point
-- **New Features**:
+- **Features**:
   - Output format selection (Markdown, HTML, JSON, DocTags)
-  - Figure extraction toggle
-  - Multimodal export toggle
-  - OCR engine selection dropdown
-  - Force OCR checkbox
+  - Figure extraction and multimodal export
+  - OCR engine selection (EasyOCR, Tesseract, macOS Vision)
+  - RAG initialization and configuration
+  - Real-time chat with documents
+  - OpenLLMetry metrics dashboard
 
-#### docling_parser.py (Enhanced Core Parser)
+#### docling_parser.py (Core Parser)
 - **Purpose**: Advanced document parsing and conversion logic
 - **Key Classes**:
-  - `DoclingParser`: Enhanced main parser class
+  - `DoclingParser`: Main parser class
 - **Key Methods**:
   - `parse_document()`: Parse with OCR, figures, multimodal support
   - `parse_batch()`: Batch processing with all features
@@ -132,6 +178,47 @@ graph TB
   - `get_supported_formats()`: List all supported formats
   - `get_ocr_engines()`: List available OCR engines
   - `clear_output_directory()`: Cleanup utility
+
+#### rag_engine.py (RAG Engine)
+- **Purpose**: Retrieval-Augmented Generation implementation
+- **Key Classes**:
+  - `RAGEngine`: Main RAG orchestration class
+  - `OllamaEmbeddings`: Embedding generation wrapper
+  - `OllamaLLM`: LLM generation wrapper
+- **Key Methods**:
+  - `index_document()`: Index document chunks into OpenSearch
+  - `search()`: Semantic search using k-NN vectors
+  - `chat()`: Generate responses with retrieved context
+  - `health_check()`: Check system health (OpenSearch, Ollama, models)
+  - `get_stats()`: Get index statistics
+  - `list_indexed_documents()`: List all indexed documents
+  - `delete_document()`: Remove document from index
+- **Features**:
+  - Automatic text chunking with LangChain
+  - Vector embeddings with Ollama models
+  - k-NN semantic search with OpenSearch
+  - Context-aware LLM responses
+  - Source citation tracking
+  - OpenLLMetry tracing integration
+
+#### metrics_collector.py (OpenLLMetry Metrics)
+- **Purpose**: Collect and aggregate OpenTelemetry metrics
+- **Key Classes**:
+  - `MetricsCollector`: Custom span exporter for metrics collection
+- **Key Methods**:
+  - `export()`: Process and store OpenTelemetry spans
+  - `get_metrics()`: Get aggregated metrics summary
+  - `get_recent_spans()`: Get recent trace spans
+  - `get_time_series_data()`: Get time-series metrics for charts
+  - `reset_metrics()`: Clear all collected metrics
+- **Metrics Tracked**:
+  - Total requests and tokens
+  - Average latency and percentiles (P50, P95, P99)
+  - Error count and error rate
+  - Operations breakdown
+  - Model usage statistics
+  - Hourly activity patterns
+  - Latency by operation type
 
 ### 3. Processing Layer
 

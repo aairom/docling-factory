@@ -31,11 +31,14 @@ A powerful, production-ready document parsing and RAG (Retrieval-Augmented Gener
   - Relevance scoring
   
 - 📊 **OpenLLMetry Observability** ⭐ NEW
-  - Track all LLM interactions
-  - Performance metrics and latency monitoring
-  - Request/response logging
-  - Error tracking and debugging
-  - OpenTelemetry integration
+  - Real-time metrics dashboard with comprehensive statistics
+  - Track all LLM interactions and operations
+  - Performance metrics: latency (min/avg/p50/p95/p99/max), token usage
+  - Request/response logging with detailed traces
+  - Error tracking and debugging with error rates
+  - Hourly activity monitoring
+  - Model usage statistics
+  - OpenTelemetry integration with custom metrics collector
 
 ### 📄 Document Processing Features
 
@@ -125,9 +128,13 @@ A powerful, production-ready document parsing and RAG (Retrieval-Augmented Gener
 
 > **⚠️ IMPORTANT**: Always run the app using `./scripts/launch.sh` or activate the virtual environment first!
 >
-> See **[START_HERE.md](START_HERE.md)** for the correct way to run the app.
+> See **[docs/START_HERE.md](docs/START_HERE.md)** for the correct way to run the app.
 >
-> Having issues? Check **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** for solutions.
+> Having issues? Check **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** for solutions.
+>
+> **RAG System**: See **[docs/RAG_USAGE_GUIDE.md](docs/RAG_USAGE_GUIDE.md)** for using the Chat with Documents feature.
+>
+> **Ollama Connection Fix**: See **[docs/OLLAMA_FIX.md](docs/OLLAMA_FIX.md)** for details on the Ollama health check fix.
 
 ### Prerequisites
 
@@ -365,7 +372,11 @@ Edit `app.py` to customize:
 
 For detailed documentation, see:
 - [Full Documentation](docs/README.md) - Complete guide with API reference
-- [RAG Setup Guide](docs/RAG_SETUP.md) - Complete RAG setup and usage guide ⭐ NEW
+- [Start Here](docs/START_HERE.md) - Quick start guide with correct launch methods ⭐ NEW
+- [RAG Usage Guide](docs/RAG_USAGE_GUIDE.md) - Complete RAG setup and usage guide ⭐ NEW
+- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions ⭐ NEW
+- [Ollama Fix](docs/OLLAMA_FIX.md) - Ollama connection health check fix ⭐ NEW
+- [EasyOCR Solution](docs/EASYOCR_SOLUTION.md) - EasyOCR installation fix ⭐ NEW
 - [Architecture](docs/ARCHITECTURE.md) - System architecture and design
 - [Quick Start](docs/QUICKSTART.md) - Quick start guide
 - [Workflow Diagrams](docs/workflows.md) - Visual process flows with Mermaid diagrams

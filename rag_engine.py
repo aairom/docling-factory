@@ -26,6 +26,14 @@ from langchain_core.documents import Document
 from traceloop.sdk import Traceloop
 from traceloop.sdk.decorators import workflow, task
 
+# OpenTelemetry for metrics
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+# Metrics collector
+from metrics_collector import MetricsCollector, initialize_metrics_collector, get_metrics_collector
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -168,10 +176,24 @@ class RAGEngine:
             index_name: OpenSearch index name
             enable_tracing: Enable OpenLLMetry tracing
         """
-        # Initialize OpenLLMetry tracing
+        # Initialize OpenLLMetry tracing with metrics collector
+        self.metrics_collector = None
         if enable_tracing:
+            # Initialize metrics collector
+            self.metrics_collector = initialize_metrics_collector(max_history=1000)
+            
+            # Get or create tracer provider
+            tracer_provider = trace.get_tracer_provider()
+            if not isinstance(tracer_provider, TracerProvider):
+                tracer_provider = TracerProvider()
+                trace.set_tracer_provider(tracer_provider)
+            
+            # Add metrics collector as span processor
+            tracer_provider.add_span_processor(BatchSpanProcessor(self.metrics_collector))
+            
+            # Initialize Traceloop
             Traceloop.init(app_name="docling-rag", disable_batch=True)
-            logger.info("OpenLLMetry tracing enabled")
+            logger.info("OpenLLMetry tracing enabled with metrics collection")
         
         # Initialize OpenSearch client
         self.opensearch_client = OpenSearch(
@@ -190,9 +212,10 @@ class RAGEngine:
         self.llm = OllamaLLM(model=llm_model, base_url=ollama_base_url)
         
         # Text splitter for chunking
+        # Reduced chunk size to avoid exceeding embedding model context length
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
+            chunk_size=500,  # Reduced from 1000 to fit within model context
+            chunk_overlap=100,  # Reduced overlap proportionally
             length_function=len,
         )
         
@@ -488,8 +511,14 @@ class RAGEngine:
         # Check Ollama and models
         try:
             client = ollama.Client(host=self.ollama_base_url)
-            models = client.list()
-            model_names = [m['name'] for m in models.get('models', [])]
+            response = client.list()
+            
+            # Extract model names from ListResponse
+            model_names = []
+            if hasattr(response, 'models'):
+                model_names = [m.model for m in response.models]
+            elif isinstance(response, dict) and 'models' in response:
+                model_names = [m.get('name', m.get('model', '')) for m in response['models']]
             
             health["ollama"] = True
             health["embedding_model"] = self.embeddings.model in model_names
