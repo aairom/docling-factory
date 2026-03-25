@@ -6,8 +6,17 @@ metadata:
   labels:
     app: docling-factory
 data:
+  # Gradio settings
   GRADIO_SERVER_NAME: "0.0.0.0"
   GRADIO_SERVER_PORT: "7860"
   PYTHONUNBUFFERED: "1"
+  
+  # RAG settings - OpenSearch
+  OPENSEARCH_HOST: "opensearch-service"
+  OPENSEARCH_PORT: "9200"
+  
+  # RAG settings - Ollama (external service)
+  # Note: Update this to point to your Ollama service endpoint
+  OLLAMA_BASE_URL: "http://ollama-service:11434"
 
 # Made with Bob

@@ -13,6 +13,8 @@ services:
       - "9600:9600"
     volumes:
       - opensearch-data:/usr/share/opensearch/data
+    networks:
+      - docling-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
@@ -21,7 +23,11 @@ services:
       retries: 5
       start_period: 60s
 
-  # CPU version
+  # Ollama for local LLM (Note: Ollama should be run on host machine)
+  # This is a placeholder - Ollama is typically run directly on the host
+  # Use host.docker.internal to connect from containers to host Ollama
+
+  # CPU version with RAG support
   docling-factory-cpu:
     build:
       context: .
@@ -37,6 +43,14 @@ services:
       - GRADIO_SERVER_NAME=0.0.0.0
       - GRADIO_SERVER_PORT=7860
       - PYTHONUNBUFFERED=1
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+    networks:
+      - docling-network
+    depends_on:
+      opensearch:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:7860')"]
@@ -45,7 +59,7 @@ services:
       retries: 3
       start_period: 40s
 
-  # GPU version (requires nvidia-docker)
+  # GPU version with RAG support (requires nvidia-docker)
   docling-factory-gpu:
     build:
       context: .
@@ -62,6 +76,14 @@ services:
       - GRADIO_SERVER_PORT=7860
       - PYTHONUNBUFFERED=1
       - CUDA_VISIBLE_DEVICES=0
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+    networks:
+      - docling-network
+    depends_on:
+      opensearch:
+        condition: service_healthy
     restart: unless-stopped
     deploy:
       resources:
@@ -81,8 +103,16 @@ services:
 
 volumes:
   opensearch-data:
+    driver: local
   input:
+    driver: local
   output:
+    driver: local
   logs:
+    driver: local
+
+networks:
+  docling-network:
+    driver: bridge
 
 # Made with Bob

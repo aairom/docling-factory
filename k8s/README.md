@@ -16,29 +16,54 @@ This directory contains Kubernetes manifests for deploying Docling Factory on Ku
 | File | Description |
 |------|-------------|
 | `namespace.yaml` | Creates the docling-factory namespace |
-| `configmap.yaml` | Application configuration |
+| `configmap.yaml` | Application configuration with RAG settings |
 | `pvc.yaml` | Persistent Volume Claims for input, output, and logs |
-| `deployment-cpu.yaml` | CPU-based deployment (2 replicas) |
-| `deployment-gpu.yaml` | GPU-based deployment (1 replica with GPU) |
+| `deployment-cpu.yaml` | CPU-based deployment (2 replicas) with RAG support |
+| `deployment-gpu.yaml` | GPU-based deployment (1 replica with GPU) with RAG support |
+| `opensearch-deployment.yaml` | OpenSearch deployment for RAG vector database |
 | `service.yaml` | Services for CPU, GPU, and LoadBalancer |
 | `ingress.yaml` | Ingress configuration for external access |
 | `hpa.yaml` | Horizontal Pod Autoscaler for CPU deployment |
 
 ## 🚀 Quick Deployment
 
-### Deploy CPU Version
+### Deploy with RAG Support (Recommended)
 
 ```bash
-# Apply all manifests
+# 1. Create namespace
+kubectl apply -f k8s/namespace.yaml
+
+# 2. Apply configuration
+kubectl apply -f k8s/configmap.yaml
+
+# 3. Deploy OpenSearch for RAG
+kubectl apply -f k8s/opensearch-deployment.yaml
+
+# 4. Wait for OpenSearch to be ready
+kubectl wait --for=condition=ready pod -l app=opensearch -n docling-factory --timeout=300s
+
+# 5. Deploy storage
+kubectl apply -f k8s/pvc.yaml
+
+# 6. Deploy application (CPU version)
+kubectl apply -f k8s/deployment-cpu.yaml
+kubectl apply -f k8s/service.yaml
+kubectl apply -f k8s/hpa.yaml
+
+# 7. Optional: Apply ingress
+kubectl apply -f k8s/ingress.yaml
+```
+
+### Deploy CPU Version Only (No RAG)
+
+```bash
+# Apply core manifests
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/configmap.yaml
 kubectl apply -f k8s/pvc.yaml
 kubectl apply -f k8s/deployment-cpu.yaml
 kubectl apply -f k8s/service.yaml
 kubectl apply -f k8s/hpa.yaml
-
-# Optional: Apply ingress
-kubectl apply -f k8s/ingress.yaml
 ```
 
 ### Deploy GPU Version
@@ -107,6 +132,65 @@ kubectl port-forward -n docling-factory svc/docling-factory 7860:80
 3. Access at https://your-domain.com
 
 ## ⚙️ Configuration
+
+### RAG Configuration
+
+The application requires external services for full RAG functionality:
+
+1. **OpenSearch** - Deployed via `opensearch-deployment.yaml`
+2. **Ollama** - Must be deployed separately (see below)
+
+#### Deploy Ollama (External)
+
+Ollama should be deployed as a separate service. Update `configmap.yaml` with your Ollama endpoint:
+
+```yaml
+OLLAMA_BASE_URL: "http://ollama-service:11434"
+```
+
+Example Ollama deployment (create `ollama-deployment.yaml`):
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: docling-factory
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      containers:
+      - name: ollama
+        image: ollama/ollama:latest
+        ports:
+        - containerPort: 11434
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "2000m"
+          limits:
+            memory: "8Gi"
+            cpu: "4000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama-service
+  namespace: docling-factory
+spec:
+  ports:
+  - port: 11434
+    targetPort: 11434
+  selector:
+    app: ollama
+```
 
 ### Adjust Resources
 
@@ -327,3 +411,58 @@ kubectl describe pod <gpu-pod-name> -n docling-factory
 - [Docker Compose](../docker-compose.yml)
 - [Dockerfile](../Dockerfile)
 - [Dockerfile GPU](../Dockerfile.gpu)
+- [RAG Usage Guide](../RAG_USAGE_GUIDE.md)
+- [Architecture Documentation](../docs/ARCHITECTURE.md)
+
+## 🆕 RAG Features
+
+The Kubernetes deployment now includes full RAG (Retrieval-Augmented Generation) support:
+
+- **OpenSearch** for vector storage and semantic search
+- **Ollama** integration for local LLM and embeddings
+- **OpenLLMetry** for observability and metrics
+- **Chat with Documents** functionality
+- **Real-time metrics dashboard**
+
+### RAG Architecture in Kubernetes
+
+```
+┌─────────────────┐
+│   Ingress       │
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│  LoadBalancer   │
+└────────┬────────┘
+         │
+    ┌────▼─────┬──────────┐
+    │          │          │
+┌───▼───┐  ┌──▼───┐  ┌──▼───┐
+│ Pod 1 │  │ Pod 2│  │ Pod N│  (Docling Factory)
+└───┬───┘  └──┬───┘  └──┬───┘
+    │         │         │
+    └─────────┼─────────┘
+              │
+    ┌─────────▼──────────┐
+    │                    │
+┌───▼────────┐  ┌───────▼────┐
+│ OpenSearch │  │   Ollama   │
+│  Service   │  │  Service   │
+└────────────┘  └────────────┘
+```
+
+### Environment Variables for RAG
+
+The following environment variables are configured in `configmap.yaml`:
+
+- `OPENSEARCH_HOST`: OpenSearch service hostname
+- `OPENSEARCH_PORT`: OpenSearch port (default: 9200)
+- `OLLAMA_BASE_URL`: Ollama service URL
+
+### Scaling Considerations
+
+- **OpenSearch**: Single replica for development, consider clustering for production
+- **Ollama**: Resource-intensive, allocate sufficient CPU/memory
+- **Docling Factory**: Can scale horizontally with HPA
+
+# Made with Bob
