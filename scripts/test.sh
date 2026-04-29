@@ -125,6 +125,21 @@ run_test "app.py syntax is valid" "python3 -m py_compile app.py"
 run_test "docling_parser.py syntax is valid" "python3 -m py_compile docling_parser.py"
 
 # Test 10: Check if .gitignore exists
+# Test 11: Run unit tests if pytest is available
+if [ -d "venv" ] && [ -d "tests" ]; then
+    source venv/bin/activate 2>/dev/null || true
+    if python -c "import pytest" 2>/dev/null; then
+        print_info "Running unit tests with pytest..."
+        if python -m pytest tests/ -v --tb=short 2>/dev/null; then
+            print_success "Unit tests passed"
+            ((TEST_PASSED++))
+        else
+            print_warning "Some unit tests failed (run './scripts/test.sh' with venv activated for details)"
+        fi
+    else
+        print_warning "pytest not installed (install with: pip install -r tests/requirements-test.txt)"
+    fi
+fi
 run_test ".gitignore exists" "[ -f .gitignore ]"
 
 echo ""

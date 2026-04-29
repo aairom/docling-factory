@@ -1,12 +1,20 @@
 # 🏭 Docling Factory - RAG Edition
 
-A powerful, production-ready document parsing and RAG (Retrieval-Augmented Generation) application built with [Docling](https://github.com/docling-project/docling), [OpenSearch](https://opensearch.org/), and [Ollama](https://ollama.ai/). Parse documents and **chat with them** using local LLMs with advanced features including **RAG**, **multimodal export**, **figure extraction**, **OCR support**, and **OpenLLMetry observability**.
+A powerful, production-ready document parsing and RAG (Retrieval-Augmented Generation) application built with [Docling](https://github.com/docling-project/docling), [OpenSearch](https://opensearch.org/), and [Ollama](https://ollama.ai/). Parse documents and **chat with them** using local LLMs.
 
-![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
+![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Docling](https://img.shields.io/badge/docling-2.0+-purple.svg)
 ![OpenSearch](https://img.shields.io/badge/opensearch-2.0+-blue.svg)
 ![Ollama](https://img.shields.io/badge/ollama-local-green.svg)
+
+## 📚 Documentation
+
+- **[Getting Started](docs/GETTING_STARTED.md)** - Quick setup and first steps
+- **[Comprehensive Guide](docs/COMPREHENSIVE_GUIDE.md)** - Complete documentation
+- **[Architecture](docs/ARCHITECTURE.md)** - System design and workflows
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Python Compatibility](docs/PYTHON_COMPATIBILITY.md)** - Python version requirements
 
 ## ✨ Features
 
@@ -126,190 +134,69 @@ A powerful, production-ready document parsing and RAG (Retrieval-Augmented Gener
 
 ## 🚀 Quick Start
 
-> **⚠️ IMPORTANT**: Always run the app using `./scripts/launch.sh` or activate the virtual environment first!
+> **⚠️ IMPORTANT**: Always use `./scripts/launch.sh` or activate the virtual environment first!
 >
-> See **[docs/START_HERE.md](docs/START_HERE.md)** for the correct way to run the app.
->
-> Having issues? Check **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** for solutions.
->
-> **RAG System**: See **[docs/RAG_USAGE_GUIDE.md](docs/RAG_USAGE_GUIDE.md)** for using the Chat with Documents feature.
->
-> **Ollama Connection Fix**: See **[docs/OLLAMA_FIX.md](docs/OLLAMA_FIX.md)** for details on the Ollama health check fix.
+> See **[Getting Started Guide](docs/GETTING_STARTED.md)** for detailed setup instructions.
 
-### Prerequisites
-
-- Python 3.8 or higher
-- pip package manager
-- **Podman or Docker** (for OpenSearch)
-- **Ollama** (for local LLM)
-- (Optional) CUDA-compatible GPU for GPU acceleration
-
-### Installation
-
-1. **Clone or download this repository**
+### 3-Step Setup
 
 ```bash
-cd docling-factory
-```
-
-2. **Install Ollama and pull models**
-
-```bash
-# Install Ollama (macOS/Linux)
-curl -fsSL https://ollama.ai/install.sh | sh
-
-# Pull required models
-ollama pull llama3.2:latest
-ollama pull granite-embedding:30m
-```
-
-3. **Start OpenSearch (for RAG)**
-
-```bash
-# Using Podman
-podman-compose -f docker-compose-opensearch.yml up -d
-
-# Or using Docker
-docker-compose -f docker-compose-opensearch.yml up -d
-```
-
-4. **Run the setup script**
-
-```bash
-# For CPU version (recommended for most users)
+# 1. Run setup (creates venv and installs dependencies)
 ./scripts/setup.sh
 
-# For GPU version (requires CUDA)
-./scripts/setup.sh --gpu
-```
-
-5. **Start the application**
-
-```bash
-# Standard app
+# 2. Start the application
 ./scripts/launch.sh
 
-# Or RAG-enabled app
-source venv/bin/activate
-python app_enhanced.py
+# 3. Open browser
+# Navigate to http://localhost:7860
 ```
 
-6. **Open your browser**
+### Optional: RAG Features
 
-Navigate to `http://localhost:7860`
+```bash
+# Install Ollama
+curl -fsSL https://ollama.ai/install.sh | sh
+ollama pull llama3.2:latest
+ollama pull granite-embedding:30m
 
-### Quick RAG Setup
+# Start OpenSearch
+podman-compose -f docker-compose-opensearch.yml up -d
 
-For detailed RAG setup instructions, see [RAG Setup Guide](docs/RAG_SETUP.md).
-
-1. Start OpenSearch and Ollama (steps 2-3 above)
-2. Launch `app_enhanced.py`
-3. Go to "💬 Chat with Documents" tab
-4. Click "🔧 Initialize RAG Engine"
-5. Parse documents with "Index for RAG" enabled
-6. Start chatting with your documents!
+# Launch and initialize RAG in the UI
+./scripts/launch.sh
+```
 
 ## 📖 Usage
 
-### Individual File Processing
+### Basic Workflow
 
-1. Open the web interface at `http://localhost:7860`
-2. **Configure Global Settings:**
-   - Enable GPU acceleration (optional)
-   - **Select output formats**: Markdown, HTML, JSON, DocTags
-   - **Enable advanced features**:
-     - ✅ Extract Figures - Save images separately
-     - ✅ Multimodal Export - Embed images in Markdown
-   - **Configure OCR**:
-     - Select OCR engine (EasyOCR, Tesseract, macOS Vision, or None)
-     - Enable "Force Full Page OCR" for scanned documents
-3. Navigate to the **"📤 Individual Upload"** tab
-4. Click **"Upload Document"** and select your file
-5. Click **"🚀 Parse Document"**
-6. Watch the **real-time progress** updates
-7. View results in separate tabs for each format
+1. **Configure Settings** - Select output formats, OCR engine, features
+2. **Upload Documents** - Individual files or batch processing
+3. **Parse** - Click "Parse Document" or "Process Batch"
+4. **View Results** - Check output tabs or `output/` directory
 
-### Batch Processing
+### Key Features
 
-1. Place documents in the `input/` directory
-2. Open the web interface
-3. **Configure settings** (output formats, OCR, figure extraction, etc.)
-4. Navigate to the **"📦 Batch Processing"** tab
-5. Click **"🚀 Process Batch"**
-6. Watch the **progress bar** and status updates
-7. View processing summary with figure counts and OCR info
-8. Check `output/` directory for results
-   - Documents in selected formats
-   - Figures in `output/figures/` subdirectories
+- **Multiple Output Formats**: Markdown, HTML, JSON, DocTags
+- **Figure Extraction**: Save images separately
+- **Multimodal Export**: Embed images in Markdown
+- **OCR Support**: RapidOCR, EasyOCR, Tesseract, macOS Vision
+- **RAG Chat**: Ask questions about your documents
+- **Batch Processing**: Process entire directories
 
-### Advanced Features
-
-#### Figure Extraction
-Enable "Extract Figures" to save all images and figures separately:
-- Figures saved in `output/figures/[document_name]/`
-- Each figure saved as `figure_N.png`
-- Captions saved as `figure_N_caption.txt`
-
-#### Multimodal Export
-Enable "Multimodal Export" to embed images directly in Markdown:
-- Images encoded as base64
-- Self-contained Markdown files
-- Perfect for sharing or archiving
-
-#### OCR Processing
-Select an OCR engine for text extraction:
-- **EasyOCR**: Best for multilingual documents, uses deep learning
-- **Tesseract**: Traditional OCR, requires separate installation
-- **macOS Vision**: Native macOS OCR (macOS only)
-- **Force Full Page OCR**: Apply OCR even when text is extractable
-
-#### CSV Conversion
-Upload CSV files to convert them to:
-- Markdown tables
-- HTML tables
-- JSON arrays
-
-#### XBRL Processing
-Upload XBRL financial documents to extract:
-- Financial facts and data
-- Structured information
-- Convert to readable formats
-
-### Output Management
-
-1. Navigate to the **"📁 Output Management"** tab
-2. Click **"🔄 Refresh File List"** to see all outputs
-3. Set days threshold and click **"🗑️ Clear Outputs"** to clean old files
+For detailed usage instructions, see the [Comprehensive Guide](docs/COMPREHENSIVE_GUIDE.md).
 
 ## 🛠️ Scripts
 
-The `scripts/` directory contains automation scripts:
-
-### Setup Script
 ```bash
-./scripts/setup.sh          # Setup CPU version
-./scripts/setup.sh --gpu    # Setup GPU version
+./scripts/setup.sh [--gpu]              # Setup environment
+./scripts/launch.sh [options]           # Start application
+./scripts/stop.sh [--force]             # Stop application
+./scripts/status.sh                     # Check status
+./scripts/test.sh                       # Run tests
 ```
 
-### Launch Script
-```bash
-./scripts/launch.sh                    # Start in foreground
-./scripts/launch.sh --detached         # Start in background
-./scripts/launch.sh --port 8080        # Custom port
-./scripts/launch.sh --gpu              # Enable GPU
-./scripts/launch.sh -d -p 8080 --gpu   # Combined options
-```
-
-### Stop Script
-```bash
-./scripts/stop.sh          # Gracefully stop
-./scripts/stop.sh --force  # Force stop
-```
-
-### Status Script
-```bash
-./scripts/status.sh        # Check application status
-```
+See [Getting Started](docs/GETTING_STARTED.md) for detailed script usage.
 
 ## 📁 Project Structure
 
@@ -368,62 +255,37 @@ Edit `app.py` to customize:
 - Share settings (line 317)
 - UI theme (line 182)
 
-## 📚 Documentation
-
-For detailed documentation, see:
-- [Full Documentation](docs/README.md) - Complete guide with API reference
-- [Start Here](docs/START_HERE.md) - Quick start guide with correct launch methods ⭐ NEW
-- [RAG Usage Guide](docs/RAG_USAGE_GUIDE.md) - Complete RAG setup and usage guide ⭐ NEW
-- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions ⭐ NEW
-- [Ollama Fix](docs/OLLAMA_FIX.md) - Ollama connection health check fix ⭐ NEW
-- [EasyOCR Solution](docs/EASYOCR_SOLUTION.md) - EasyOCR installation fix ⭐ NEW
-- [Architecture](docs/ARCHITECTURE.md) - System architecture and design
-- [Quick Start](docs/QUICKSTART.md) - Quick start guide
-- [Workflow Diagrams](docs/workflows.md) - Visual process flows with Mermaid diagrams
-
 ## 🐛 Troubleshooting
 
-### Common Issues
+| Issue | Solution |
+|-------|----------|
+| Import errors | `./scripts/setup.sh` |
+| Port in use | `./scripts/launch.sh --port 8080` |
+| App won't stop | `./scripts/stop.sh --force` |
+| GPU not detected | `python -c "import torch; print(torch.cuda.is_available())"` |
 
-**Import errors**
-```bash
-pip install -r requirements.txt
-```
-
-**GPU not detected**
-```bash
-python -c "import torch; print(torch.cuda.is_available())"
-```
-
-**Port already in use**
-```bash
-./scripts/launch.sh --port 8080
-```
-
-**Application won't stop**
-```bash
-./scripts/stop.sh --force
-```
+See [Troubleshooting Guide](docs/TROUBLESHOOTING.md) for detailed solutions.
 
 ## 🎯 Examples
 
-### Parse a Single PDF with Multiple Formats
-1. Select **Markdown**, **HTML**, and **JSON** checkboxes
-2. Upload your PDF through the web interface
-3. Click "Parse Document"
-4. Watch the progress updates
-5. View the extracted content in all three formats
-
-### Batch Process Multiple Documents with Progress Tracking
-1. Copy 10 PDFs to the `input/` directory
-2. Select desired output formats (e.g., Markdown and HTML)
-3. Click "Process Batch" in the web interface
-4. Watch the progress bar showing "Processing file 3/10..."
-5. All 10 documents are parsed and saved to `output/` in selected formats
-
-### Use GPU Acceleration
 ```bash
-./scripts/launch.sh --gpu --detached
+# Parse single PDF with multiple formats
+# 1. Upload PDF in UI
+# 2. Select Markdown, HTML, JSON
+# 3. Click "Parse Document"
+
+# Batch process directory
+# 1. Place PDFs in input/
+# 2. Configure settings
+# 3. Click "Process Batch"
+
+# Use GPU acceleration
+./scripts/launch.sh --gpu
+
+# Chat with documents
+# 1. Initialize RAG engine
+# 2. Parse with "Index for RAG" enabled
+# 3. Ask questions in Chat tab
 ```
 
 ## 🐳 Docker Deployment
@@ -483,54 +345,28 @@ For detailed Kubernetes deployment instructions, see [k8s/README.md](k8s/README.
 
 ## 🔍 API Usage
 
-You can also use the enhanced parser programmatically:
-
 ```python
 from docling_parser import DoclingParser
+from rag_engine import RAGEngine
 
-# Initialize parser
-parser = DoclingParser(use_gpu=False, output_dir="output")
-
-# Parse single document with all features
+# Parse documents
+parser = DoclingParser(use_gpu=False)
 result = parser.parse_document(
     "document.pdf",
-    output_formats=['markdown', 'html', 'json'],
+    output_formats=['markdown', 'html'],
     export_figures=True,
-    export_multimodal=False,
-    ocr_engine='easyocr',
-    force_ocr=False
-)
-print(result)
-
-# Parse batch with advanced features
-results = parser.parse_batch(
-    "input",
-    output_formats=['markdown', 'json'],
-    export_figures=True,
-    ocr_engine='tesseract',
-    force_ocr=True
-)
-for result in results:
-    status = "✓" if result['status'] == 'success' else "✗"
-    figures = result.get('figure_count', 0)
-    print(f"{status} {result['input_file']}: {figures} figures")
-
-# Get available OCR engines
-ocr_engines = parser.get_ocr_engines()
-print(f"Available OCR engines: {ocr_engines}")
-
-# Parse CSV file
-csv_result = parser.parse_document(
-    "data.csv",
-    output_formats=['markdown', 'html', 'json']
+    ocr_engine='rapidocr'
 )
 
-# Parse XBRL file
-xbrl_result = parser.parse_document(
-    "financial.xbrl",
-    output_formats=['markdown', 'json']
+# RAG chat
+rag = RAGEngine(
+    embedding_model="granite-embedding:30m",
+    llm_model="llama3.2:latest"
 )
+response = rag.chat("What is this document about?")
 ```
+
+See [Comprehensive Guide](docs/COMPREHENSIVE_GUIDE.md) for complete API reference.
 
 ## 🤝 Contributing
 

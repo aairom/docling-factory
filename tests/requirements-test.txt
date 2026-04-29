@@ -1,0 +1,20 @@
+# Testing dependencies for Docling Factory
+
+# Core testing framework
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.1
+
+# Code coverage
+coverage>=7.3.0
+
+# Mocking and testing utilities
+unittest-xml-reporting>=3.2.0
+
+# For async testing
+pytest-asyncio>=0.21.0
+
+# Code quality
+flake8>=6.1.0
+black>=23.7.0
+mypy>=1.5.0
