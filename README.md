@@ -13,6 +13,7 @@ A powerful, production-ready document parsing and RAG (Retrieval-Augmented Gener
 - **[Getting Started](docs/GETTING_STARTED.md)** - Quick setup and first steps
 - **[Comprehensive Guide](docs/COMPREHENSIVE_GUIDE.md)** - Complete documentation
 - **[Architecture](docs/ARCHITECTURE.md)** - System design and workflows
+- **[Visual Dashboard](docs/VISUAL_DASHBOARD.md)** - Interactive metrics visualization
 - **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 - **[Python Compatibility](docs/PYTHON_COMPATIBILITY.md)** - Python version requirements
 
@@ -39,7 +40,12 @@ A powerful, production-ready document parsing and RAG (Retrieval-Augmented Gener
   - Relevance scoring
   
 - 📊 **OpenLLMetry Observability** ⭐ NEW
-  - Real-time metrics dashboard with comprehensive statistics
+  - **Visual Dashboard** with interactive Plotly charts
+    - Quality & Errors: finish reasons, error breakdown, rate limits
+    - Token Usage & Cost: input/output tokens, cost tracking, throughput
+    - Latency: P50/P95/P99 percentiles, time to first token, model comparison
+    - Health Overview: request rate, error rate, active models
+  - Real-time metrics with comprehensive statistics
   - Track all LLM interactions and operations
   - Performance metrics: latency (min/avg/p50/p95/p99/max), token usage
   - Request/response logging with detailed traces

@@ -438,8 +438,12 @@ Please initialize the RAG engine with tracing enabled to start collecting metric
             dashboard += f"- **{op}:** {count} requests\n"
         
         dashboard += "\n### 🤖 Model Usage\n"
-        for model, count in metrics['models'].items():
-            dashboard += f"- **{model}:** {count} requests\n"
+        models_used = metrics.get('models_used', {})
+        if models_used:
+            for model, count in models_used.items():
+                dashboard += f"- **{model}:** {count} requests\n"
+        else:
+            dashboard += "- No model usage data yet\n"
         
         dashboard += f"""
 
@@ -451,8 +455,12 @@ Please initialize the RAG engine with tracing enabled to start collecting metric
 Recent activity by hour:
 """
         
-        for hour, count in sorted(metrics['hourly_activity'].items())[-5:]:
-            dashboard += f"- **{hour}:** {count} requests\n"
+        hourly_requests = metrics.get('hourly_requests', {})
+        if hourly_requests:
+            for hour, count in sorted(hourly_requests.items())[-5:]:
+                dashboard += f"- **{hour}:** {count} requests\n"
+        else:
+            dashboard += "- No activity data yet\n"
         
         dashboard += """
 
@@ -685,8 +693,7 @@ with gr.Blocks(title="Docling Parser with RAG") as app:
             
             refresh_docs_btn.click(fn=list_indexed_documents, outputs=indexed_docs)
             
-            # Auto-load indexed documents
-            app.load(fn=list_indexed_documents, outputs=indexed_docs)
+            # Removed auto-load to prevent freezing - user must click refresh button
         
         # Tab 3: RAG Statistics
         with gr.Tab("📊 RAG Statistics"):
@@ -696,7 +703,7 @@ with gr.Blocks(title="Docling Parser with RAG") as app:
             stats_output = gr.Markdown()
             
             refresh_stats_btn.click(fn=get_rag_stats, outputs=stats_output)
-            app.load(fn=get_rag_stats, outputs=stats_output)
+            # Removed auto-load to prevent freezing - user must click refresh button
         
         # Tab 4: OpenLLMetry Dashboard
         with gr.Tab("🔍 OpenLLMetry"):
@@ -715,7 +722,7 @@ with gr.Blocks(title="Docling Parser with RAG") as app:
                     
                     refresh_metrics_btn.click(fn=get_openllmetry_metrics, outputs=metrics_output)
                     reset_metrics_btn.click(fn=reset_metrics, outputs=reset_status)
-                    app.load(fn=get_openllmetry_metrics, outputs=metrics_output)
+                    # Removed auto-load to prevent freezing - user must click refresh button
                 
                 with gr.Tab("🔍 Recent Traces"):
                     gr.Markdown("View recent OpenTelemetry trace spans")
@@ -724,7 +731,7 @@ with gr.Blocks(title="Docling Parser with RAG") as app:
                     traces_output = gr.Markdown()
                     
                     refresh_traces_btn.click(fn=get_recent_traces, outputs=traces_output)
-                    app.load(fn=get_recent_traces, outputs=traces_output)
+                    # Removed auto-load to prevent freezing - user must click refresh button
     
     gr.Markdown("""
     ---

@@ -5,6 +5,8 @@ docling-parse>=2.0.0
 
 # UI frameworks
 streamlit>=1.31.0
+# Visualization for metrics dashboard
+plotly>=5.18.0
 gradio>=4.0.0
 
 # Document processing

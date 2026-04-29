@@ -40,6 +40,8 @@ COPY docling_parser.py .
 COPY app_enhanced.py .
 COPY rag_engine.py .
 COPY metrics_collector.py .
+COPY standalone_dashboard.py .
+COPY metrics_dashboard.py .
 
 # Create necessary directories
 RUN mkdir -p input output output/figures logs

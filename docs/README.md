@@ -38,10 +38,26 @@ Welcome to the Docling Factory documentation! This index will help you find the 
   - Output management
   - Error handling
 
+- **[Visual Dashboard](VISUAL_DASHBOARD.md)** - Interactive metrics visualization
+  - Quality & Errors charts
+  - Token Usage & Cost tracking
+  - Latency monitoring
+  - Health Overview
+  - Installation and usage
+
+- **[Standalone Dashboard Integration](STANDALONE_DASHBOARD_INTEGRATION.md)** - Browser-based dashboard viewer
+  - Open dashboard in separate browser window
+  - Full Plotly interactivity
+  - Workaround for Gradio rendering issues
+  - Usage guide and troubleshooting
+
 ### Support & Troubleshooting
 - **[Troubleshooting](TROUBLESHOOTING.md)** - Common issues and solutions
   - Quick diagnostics
   - 15+ common issues with solutions
+  - RAG tab unresponsive fix
+  - Application restart procedures
+  - Metrics key error fix
   - Environment-specific issues
   - Logging and debugging
   - System requirements
@@ -95,6 +111,7 @@ Welcome to the Docling Factory documentation! This index will help you find the 
 | [Comprehensive Guide](COMPREHENSIVE_GUIDE.md) | Complete documentation | All users |
 | [Architecture](ARCHITECTURE.md) | System design | Developers |
 | [Workflows](workflows.md) | Process flows | Developers |
+| [Visual Dashboard](VISUAL_DASHBOARD.md) | Metrics visualization | All users |
 | [Troubleshooting](TROUBLESHOOTING.md) | Problem solving | All users |
 | [Python Compatibility](PYTHON_COMPATIBILITY.md) | Python versions | Developers |
 | [Consolidation Summary](CONSOLIDATION_SUMMARY.md) | Documentation changes | Contributors |
@@ -130,7 +147,8 @@ For developers and contributors:
 - Chat with documents using local LLMs
 - Semantic search with OpenSearch
 - Ollama integration for local AI
-- OpenLLMetry observability
+- OpenLLMetry observability with visual dashboard
+- Interactive metrics charts (Plotly)
 - Context-aware responses
 
 ### Deployment

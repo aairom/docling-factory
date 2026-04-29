@@ -1,5 +1,83 @@
 # Troubleshooting Guide
 
+## Table of Contents
+- [Application Issues](#application-issues)
+- [RAG Tab Unresponsive](#rag-tab-unresponsive)
+- [Document Parsing Issues](#document-parsing-issues)
+- [OCR Problems](#ocr-problems)
+- [Docker/Podman Issues](#dockerpodman-issues)
+- [OpenSearch Issues](#opensearch-issues)
+- [Ollama Issues](#ollama-issues)
+
+---
+
+## Application Issues
+
+### RAG Tabs Unresponsive or Page Hangs
+
+**Symptoms:**
+- When launching `app_enhanced.py`, clicking on "Chat with Documents", "RAG Statistics", or "OpenLLMetry" tabs shows "Page Unresponsive" error
+- Browser prompts to "Exit Page" or "Wait"
+- Application hangs on startup
+
+**Root Cause:**
+The RAG-related tabs were trying to load data on application startup before the RAG engine was initialized, causing the page to hang when OpenSearch or Ollama services were not available.
+
+**Solution (Fixed in Latest Version):**
+The application has been updated to:
+1. Remove automatic data loading on app startup (`app.load()` calls removed)
+2. Add graceful error handling in all RAG functions
+3. Display helpful messages when RAG engine is not initialized
+4. Only load data when user explicitly clicks refresh buttons
+
+**If You Still Experience Issues:**
+1. Make sure you're using the latest version of `app_enhanced.py`
+2. Start with the basic app first: `python app.py` (no RAG dependencies)
+3. For RAG features, ensure services are running:
+   ```bash
+   # Start OpenSearch
+   podman-compose -f docker-compose-opensearch.yml up -d
+   
+   # Verify Ollama is running
+   ollama list
+   ```
+4. Initialize RAG engine manually in the "Chat with Documents" tab before using RAG features
+
+**Workaround for Older Versions:**
+If you have an older version, you can:
+1. Use `app.py` instead of `app_enhanced.py` (no RAG features)
+2. Or ensure OpenSearch and Ollama are running before starting the app
+3. Or update to the latest version with the fix
+
+### Application Restart After Code Changes
+
+**IMPORTANT:** After modifying Python files, you MUST restart the application:
+
+```bash
+# 1. Stop the application (Ctrl+C or):
+pkill -f "python.*app_enhanced.py"
+
+# 2. Start fresh
+python app_enhanced.py
+
+# 3. Open in NEW browser tab
+http://0.0.0.0:7860/
+```
+
+**Why:** Browser refresh only reloads HTML/CSS/JS, not Python code changes.
+
+### Metrics Key Error
+
+**Symptoms:** "Refresh Metrics" button shows: `❌ Error retrieving metrics: 'models'`
+
+**Solution:** This was fixed by correcting dictionary key names in `get_openllmetry_metrics()`:
+- `metrics['models']` → `metrics['models_used']`
+- `metrics['hourly_activity']` → `metrics['hourly_requests']`
+
+If you still see this error, restart the application to load the fixed code.
+
+---
+
 Common issues and solutions for Docling Factory.
 
 ## Quick Diagnostics
