@@ -34,8 +34,9 @@ graph TB
     
     subgraph "RAG Layer"
         OLLAMA[Ollama<br/>Local LLM Runtime]
-        EMBED[Embedding Models<br/>granite-embedding:30m]
-        LLM[LLM Models<br/>llama3.2, gemma3, etc.]
+        LITELLM[LiteLLM AI Gateway<br/>Remote LLM Access]
+        EMBED[Embedding Models<br/>Local & Remote]
+        LLM[LLM Models<br/>Local & Remote]
         OPENSEARCH[OpenSearch<br/>Vector Database]
         LANGCHAIN[LangChain<br/>Text Splitting]
     end
@@ -75,10 +76,13 @@ graph TB
     PARSER <--> XBRL_H
     PARSER <--> PDF_H
     RAG <--> OLLAMA
+    RAG <--> LITELLM
     RAG <--> OPENSEARCH
     RAG <--> LANGCHAIN
     OLLAMA --> EMBED
     OLLAMA --> LLM
+    LITELLM --> EMBED
+    LITELLM --> LLM
     RAG --> OTEL
     OTEL --> TRACELOOP
     OTEL --> COLLECTOR
@@ -113,6 +117,7 @@ graph TB
     style CSV_H fill:#f3e5f5
     style XBRL_H fill:#f3e5f5
     style OLLAMA fill:#e1bee7
+    style LITELLM fill:#e1bee7
     style EMBED fill:#e1bee7
     style LLM fill:#e1bee7
     style OPENSEARCH fill:#b2dfdb
@@ -180,26 +185,31 @@ graph TB
   - `clear_output_directory()`: Cleanup utility
 
 #### rag_engine.py (RAG Engine)
-- **Purpose**: Retrieval-Augmented Generation implementation
+- **Purpose**: Retrieval-Augmented Generation implementation with dual backend support
 - **Key Classes**:
-  - `RAGEngine`: Main RAG orchestration class
-  - `OllamaEmbeddings`: Embedding generation wrapper
-  - `OllamaLLM`: LLM generation wrapper
+  - `RAGEngine`: Main RAG orchestration class with backend selection
+  - `OllamaEmbeddings`: Local embedding generation wrapper
+  - `OllamaLLM`: Local LLM generation wrapper
+  - `LiteLLMEmbeddings`: Remote embedding generation via LiteLLM ⭐ NEW
+  - `LiteLLMLLM`: Remote LLM generation via LiteLLM ⭐ NEW
 - **Key Methods**:
   - `index_document()`: Index document chunks into OpenSearch
   - `search()`: Semantic search using k-NN vectors
   - `chat()`: Generate responses with retrieved context
-  - `health_check()`: Check system health (OpenSearch, Ollama, models)
+  - `health_check()`: Check system health (OpenSearch, Ollama/LiteLLM, models)
   - `get_stats()`: Get index statistics
   - `list_indexed_documents()`: List all indexed documents
   - `delete_document()`: Remove document from index
 - **Features**:
+  - **Dual Backend Support**: Choose between local Ollama or remote LiteLLM ⭐ NEW
+  - **100+ LLM Providers**: Access OpenAI, Anthropic, Azure, Google, AWS via LiteLLM ⭐ NEW
   - Automatic text chunking with LangChain
-  - Vector embeddings with Ollama models
+  - Vector embeddings with local or remote models
   - k-NN semantic search with OpenSearch
   - Context-aware LLM responses
   - Source citation tracking
   - OpenLLMetry tracing integration
+  - Seamless backend switching without code changes
 
 #### metrics_collector.py (OpenLLMetry Metrics)
 - **Purpose**: Collect and aggregate OpenTelemetry metrics
@@ -348,6 +358,11 @@ edf-docling/
 | `DOCLING_SHARE` | false | Create public share link |
 | `DOCLING_INPUT_DIR` | ./input | Input directory path |
 | `DOCLING_OUTPUT_DIR` | ./output | Output directory path |
+| `OPENSEARCH_HOST` | localhost | OpenSearch host |
+| `OPENSEARCH_PORT` | 9200 | OpenSearch port |
+| `OLLAMA_BASE_URL` | http://localhost:11434 | Ollama API base URL |
+| `LITELLM_API_BASE` | http://localhost:4000 | LiteLLM API base URL ⭐ NEW |
+| `LITELLM_API_KEY` | sk-1234 | LiteLLM API key ⭐ NEW |
 
 ### Parser Configuration
 

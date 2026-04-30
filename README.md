@@ -12,8 +12,10 @@ A powerful, production-ready document parsing and RAG (Retrieval-Augmented Gener
 
 - **[Getting Started](docs/GETTING_STARTED.md)** - Quick setup and first steps
 - **[Comprehensive Guide](docs/COMPREHENSIVE_GUIDE.md)** - Complete documentation
-- **[Architecture](docs/ARCHITECTURE.md)** - System design and workflows
+- **[Architecture](docs/ARCHITECTURE.md)** - System design and workflows with LiteLLM
 - **[LiteLLM Integration](docs/LITELLM_INTEGRATION.md)** - ⭐ NEW: Remote LLM access guide
+- **[Docker Build Troubleshooting](docs/DOCKER_BUILD_TROUBLESHOOTING.md)** - ⭐ NEW: Fix Docker timeout issues
+- **[Fixes Applied](docs/FIXES_APPLIED.md)** - ⭐ NEW: Recent bug fixes and improvements
 - **[Visual Dashboard](docs/VISUAL_DASHBOARD.md)** - Interactive metrics visualization
 - **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 - **[Python Compatibility](docs/PYTHON_COMPATIBILITY.md)** - Python version requirements
