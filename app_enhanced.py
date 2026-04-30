@@ -640,7 +640,7 @@ with gr.Blocks(title="Docling Parser with RAG") as app:
                         info="Enable to use LiteLLM for accessing remote LLMs"
                     )
                     
-                    # LiteLLM Configuration (shown when enabled)
+                    # LiteLLM Configuration (initially hidden, shown when checkbox is enabled)
                     with gr.Group(visible=False) as litellm_config:
                         gr.Markdown("#### LiteLLM Configuration")
                         litellm_api_base = gr.Textbox(
@@ -698,19 +698,6 @@ with gr.Blocks(title="Docling Parser with RAG") as app:
                     init_rag_btn = gr.Button("🔧 Initialize RAG Engine", variant="primary")
                     rag_status = gr.Markdown()
                     
-                    # Toggle visibility of config sections
-                    def toggle_backend_config(use_litellm_val):
-                        return {
-                            litellm_config: gr.update(visible=use_litellm_val),
-                            ollama_config: gr.update(visible=not use_litellm_val)
-                        }
-                    
-                    use_litellm.change(
-                        fn=toggle_backend_config,
-                        inputs=[use_litellm],
-                        outputs=[litellm_config, ollama_config]
-                    )
-                    
                     gr.Markdown("### Chat Settings")
                     temperature = gr.Slider(0, 1, value=0.7, label="Temperature")
                     top_k = gr.Slider(1, 10, value=5, step=1, label="Context Chunks")
@@ -766,6 +753,19 @@ with gr.Blocks(title="Docling Parser with RAG") as app:
             )
             
             clear_btn.click(fn=clear_chat, outputs=chatbot)
+            
+            # Toggle visibility of config sections based on checkbox
+            def toggle_backend_config(use_litellm_val):
+                return {
+                    litellm_config: gr.update(visible=use_litellm_val),
+                    ollama_config: gr.update(visible=not use_litellm_val)
+                }
+            
+            use_litellm.change(
+                fn=toggle_backend_config,
+                inputs=[use_litellm],
+                outputs=[litellm_config, ollama_config]
+            )
             
             refresh_docs_btn.click(fn=list_indexed_documents, outputs=indexed_docs)
             
