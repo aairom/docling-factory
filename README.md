@@ -152,7 +152,22 @@ A powerful, production-ready document parsing and RAG (Retrieval-Augmented Gener
 >
 > See **[Getting Started Guide](docs/GETTING_STARTED.md)** for detailed setup instructions.
 
-### 3-Step Setup
+### Option 1: Quick Start (No Docker Build) ⭐ RECOMMENDED
+
+If you're experiencing Docker build timeouts, use this method:
+
+```bash
+# One-command start (starts pre-built services + runs app locally)
+./scripts/quick_start_no_build.sh
+```
+
+This script:
+- ✅ Starts pre-built Docker services (OpenSearch, LiteLLM, PostgreSQL)
+- ✅ Installs Python dependencies locally (one-time)
+- ✅ Runs the application without building Docker images
+- ✅ No 20+ minute Docker build wait!
+
+### Option 2: Traditional Setup
 
 ```bash
 # 1. Run setup (creates venv and installs dependencies)
@@ -165,19 +180,26 @@ A powerful, production-ready document parsing and RAG (Retrieval-Augmented Gener
 # Navigate to http://localhost:7860
 ```
 
+### Option 3: Full Docker Deployment
+
+```bash
+# Start all services with Docker Compose
+docker-compose up -d
+
+# Note: First build may take 20-30 minutes due to heavy ML dependencies
+# See DOCKER_BUILD_TROUBLESHOOTING.md if build times out
+```
+
 ### Optional: RAG Features
 
 ```bash
-# Install Ollama
+# Install Ollama (for local LLMs)
 curl -fsSL https://ollama.ai/install.sh | sh
 ollama pull llama3.2:latest
 ollama pull granite-embedding:30m
 
-# Start OpenSearch
-podman-compose -f docker-compose-opensearch.yml up -d
-
-# Launch and initialize RAG in the UI
-./scripts/launch.sh
+# Or use LiteLLM for remote LLMs (OpenAI, Claude, etc.)
+# See docs/LITELLM_INTEGRATION.md for configuration
 ```
 
 ## 📖 Usage
