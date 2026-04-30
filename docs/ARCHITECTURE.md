@@ -312,6 +312,194 @@ sequenceDiagram
     G-->>U: Show results
 ```
 
+### RAG with LiteLLM Architecture ⭐ NEW
+
+```mermaid
+graph TB
+    subgraph "User Interface"
+        UI[Gradio UI<br/>Chat Interface]
+    end
+    
+    subgraph "RAG Engine"
+        RAG[RAGEngine<br/>Dual Backend Support]
+        BACKEND_SELECT{Backend<br/>Selection}
+    end
+    
+    subgraph "Local Backend - Ollama"
+        OLLAMA_EMB[OllamaEmbeddings<br/>Local Embeddings]
+        OLLAMA_LLM[OllamaLLM<br/>Local LLM]
+        OLLAMA_SVC[Ollama Service<br/>Port: 11434]
+        LOCAL_MODELS[Local Models<br/>llama3.2, granite, etc.]
+    end
+    
+    subgraph "Remote Backend - LiteLLM"
+        LITELLM_EMB[LiteLLMEmbeddings<br/>Remote Embeddings]
+        LITELLM_LLM[LiteLLMLLM<br/>Remote LLM]
+        LITELLM_GW[LiteLLM Gateway<br/>Port: 4000]
+        LITELLM_DB[(PostgreSQL<br/>LiteLLM Config)]
+    end
+    
+    subgraph "LLM Providers via LiteLLM"
+        OPENAI[OpenAI<br/>GPT-4, GPT-3.5]
+        ANTHROPIC[Anthropic<br/>Claude]
+        AZURE[Azure OpenAI<br/>Enterprise]
+        GOOGLE[Google<br/>Vertex AI]
+        AWS[AWS Bedrock<br/>Cloud LLMs]
+        OTHER[100+ More<br/>Providers]
+    end
+    
+    subgraph "Vector Storage"
+        OPENSEARCH[OpenSearch<br/>Vector Database<br/>Port: 9200]
+        VECTORS[(Document<br/>Vectors)]
+    end
+    
+    subgraph "Observability"
+        OTEL[OpenTelemetry<br/>Tracing]
+        METRICS[Metrics<br/>Dashboard]
+    end
+    
+    UI -->|User Query| RAG
+    RAG --> BACKEND_SELECT
+    
+    BACKEND_SELECT -->|use_litellm=False| OLLAMA_EMB
+    BACKEND_SELECT -->|use_litellm=False| OLLAMA_LLM
+    BACKEND_SELECT -->|use_litellm=True| LITELLM_EMB
+    BACKEND_SELECT -->|use_litellm=True| LITELLM_LLM
+    
+    OLLAMA_EMB --> OLLAMA_SVC
+    OLLAMA_LLM --> OLLAMA_SVC
+    OLLAMA_SVC --> LOCAL_MODELS
+    
+    LITELLM_EMB --> LITELLM_GW
+    LITELLM_LLM --> LITELLM_GW
+    LITELLM_GW --> LITELLM_DB
+    
+    LITELLM_GW --> OPENAI
+    LITELLM_GW --> ANTHROPIC
+    LITELLM_GW --> AZURE
+    LITELLM_GW --> GOOGLE
+    LITELLM_GW --> AWS
+    LITELLM_GW --> OTHER
+    
+    RAG <--> OPENSEARCH
+    OPENSEARCH <--> VECTORS
+    
+    RAG --> OTEL
+    OTEL --> METRICS
+    
+    style UI fill:#e1f5ff
+    style RAG fill:#ffe0b2
+    style BACKEND_SELECT fill:#fff3e0
+    style OLLAMA_EMB fill:#e8f5e9
+    style OLLAMA_LLM fill:#e8f5e9
+    style OLLAMA_SVC fill:#c8e6c9
+    style LOCAL_MODELS fill:#a5d6a7
+    style LITELLM_EMB fill:#fff9c4
+    style LITELLM_LLM fill:#fff9c4
+    style LITELLM_GW fill:#ffeb3b
+    style LITELLM_DB fill:#fdd835
+    style OPENAI fill:#e1bee7
+    style ANTHROPIC fill:#e1bee7
+    style AZURE fill:#e1bee7
+    style GOOGLE fill:#e1bee7
+    style AWS fill:#e1bee7
+    style OTHER fill:#e1bee7
+    style OPENSEARCH fill:#b2dfdb
+    style VECTORS fill:#80cbc4
+    style OTEL fill:#ffccbc
+    style METRICS fill:#ffab91
+```
+
+### LiteLLM Chat Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant UI as Gradio UI
+    participant RAG as RAG Engine
+    participant LLM as LiteLLM Gateway
+    participant PROVIDER as LLM Provider<br/>(OpenAI/Claude/etc)
+    participant OS as OpenSearch
+    participant OTEL as OpenTelemetry
+    
+    U->>UI: Ask Question
+    UI->>RAG: chat(query, use_litellm=True)
+    
+    Note over RAG: 1. Generate Query Embedding
+    RAG->>LLM: embed(query)
+    LLM->>PROVIDER: Embedding API Call
+    PROVIDER-->>LLM: Embedding Vector
+    LLM-->>RAG: Query Embedding
+    RAG->>OTEL: Log Embedding Trace
+    
+    Note over RAG: 2. Search Documents
+    RAG->>OS: k-NN Search
+    OS-->>RAG: Top-K Documents
+    
+    Note over RAG: 3. Build Context
+    RAG->>RAG: Combine Query + Context
+    
+    Note over RAG: 4. Generate Response
+    RAG->>LLM: chat(messages)
+    LLM->>PROVIDER: Chat Completion API
+    PROVIDER-->>LLM: LLM Response
+    LLM-->>RAG: Generated Answer
+    RAG->>OTEL: Log LLM Trace
+    
+    Note over RAG: 5. Return with Sources
+    RAG-->>UI: Answer + Citations
+    UI-->>U: Display Response
+    
+    OTEL->>OTEL: Collect Metrics<br/>(Latency, Tokens, Cost)
+```
+
+### Backend Selection Logic
+
+```mermaid
+flowchart TD
+    START[Initialize RAG Engine]
+    CHECK{use_litellm<br/>parameter?}
+    
+    OLLAMA_PATH[Use Ollama Backend]
+    OLLAMA_EMB[OllamaEmbeddings]
+    OLLAMA_LLM[OllamaLLM]
+    OLLAMA_HEALTH[Check Ollama Health]
+    
+    LITELLM_PATH[Use LiteLLM Backend]
+    LITELLM_EMB[LiteLLMEmbeddings]
+    LITELLM_LLM[LiteLLMLLM]
+    LITELLM_HEALTH[Check LiteLLM Health]
+    
+    READY[RAG Engine Ready]
+    ERROR[Initialization Failed]
+    
+    START --> CHECK
+    CHECK -->|False/None| OLLAMA_PATH
+    CHECK -->|True| LITELLM_PATH
+    
+    OLLAMA_PATH --> OLLAMA_EMB
+    OLLAMA_PATH --> OLLAMA_LLM
+    OLLAMA_EMB --> OLLAMA_HEALTH
+    OLLAMA_LLM --> OLLAMA_HEALTH
+    
+    LITELLM_PATH --> LITELLM_EMB
+    LITELLM_PATH --> LITELLM_LLM
+    LITELLM_EMB --> LITELLM_HEALTH
+    LITELLM_LLM --> LITELLM_HEALTH
+    
+    OLLAMA_HEALTH -->|Success| READY
+    OLLAMA_HEALTH -->|Failure| ERROR
+    LITELLM_HEALTH -->|Success| READY
+    LITELLM_HEALTH -->|Failure| ERROR
+    
+    style START fill:#e1f5ff
+    style CHECK fill:#fff3e0
+    style OLLAMA_PATH fill:#e8f5e9
+    style LITELLM_PATH fill:#fff9c4
+    style READY fill:#c8e6c9
+    style ERROR fill:#ffcdd2
+```
+
 ## File Structure
 
 ```
