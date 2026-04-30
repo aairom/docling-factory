@@ -33,6 +33,8 @@ chat_history = []
 OPENSEARCH_HOST = os.getenv("OPENSEARCH_HOST", "localhost")
 OPENSEARCH_PORT = int(os.getenv("OPENSEARCH_PORT", "9200"))
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+LITELLM_API_BASE = os.getenv("LITELLM_API_BASE", "http://localhost:4000")
+LITELLM_API_KEY = os.getenv("LITELLM_API_KEY", "")
 
 
 def check_ocr_availability():
@@ -74,22 +76,29 @@ def initialize_parser(use_gpu: bool):
     return f"Parser initialized with {'GPU' if use_gpu else 'CPU'} mode"
 
 
-def initialize_rag(embedding_model: str, llm_model: str, enable_tracing: bool = True):
-    """Initialize RAG engine with selected models."""
+def initialize_rag(embedding_model: str, llm_model: str, enable_tracing: bool = True,
+                   use_litellm: bool = False, litellm_api_base: str = "", litellm_api_key: str = ""):
+    """Initialize RAG engine with selected models and backend."""
     global rag_engine
     try:
+        backend_name = "LiteLLM" if use_litellm else "Ollama"
+        
         rag_engine = RAGEngine(
             opensearch_host=OPENSEARCH_HOST,
             opensearch_port=OPENSEARCH_PORT,
             ollama_base_url=OLLAMA_BASE_URL,
             embedding_model=embedding_model,
             llm_model=llm_model,
-            enable_tracing=enable_tracing
+            enable_tracing=enable_tracing,
+            use_litellm=use_litellm,
+            litellm_api_base=litellm_api_base if litellm_api_base else LITELLM_API_BASE,
+            litellm_api_key=litellm_api_key if litellm_api_key else LITELLM_API_KEY
         )
-        return f"✅ RAG Engine initialized with {llm_model} and {embedding_model}"
+        return f"✅ RAG Engine initialized with {backend_name}\n- LLM: {llm_model}\n- Embeddings: {embedding_model}"
     except Exception as e:
         logger.error(f"Error initializing RAG: {e}")
-        return f"❌ Error: {str(e)}"
+        import traceback
+        return f"❌ Error: {str(e)}\n\n{traceback.format_exc()}"
 
 
 def get_available_ollama_models() -> List[str]:
@@ -358,7 +367,8 @@ def get_rag_stats():
 
 ### Health Status
 - **OpenSearch:** {'✅ Connected' if health.get('opensearch') else '❌ Disconnected'}
-- **Ollama:** {'✅ Connected' if health.get('ollama') else '❌ Disconnected'}
+- **LLM Backend:** {health.get('llm_backend', 'unknown').upper()}
+- **Backend Status:** {'✅ Available' if health.get('backend_available') else '❌ Unavailable'}
 - **Embedding Model:** {'✅ Available' if health.get('embedding_model') else '❌ Not Found'}
 - **LLM Model:** {'✅ Available' if health.get('llm_model') else '❌ Not Found'}
 """
@@ -531,7 +541,7 @@ with gr.Blocks(title="Docling Parser with RAG") as app:
     
     Parse documents and chat with them using **Retrieval-Augmented Generation (RAG)** powered by:
     - **OpenSearch** for vector storage
-    - **Ollama** for local LLM and embeddings
+    - **Ollama** or **LiteLLM AI Gateway** for LLM and embeddings
     - **OpenLLMetry** for observability
     """)
     
@@ -612,31 +622,72 @@ with gr.Blocks(title="Docling Parser with RAG") as app:
             Ask questions about your indexed documents using RAG.
             
             **Setup:**
-            1. Initialize RAG engine below
-            2. Parse documents with "Index for RAG" enabled
-            3. Start chatting!
+            1. Choose LLM backend (Ollama or LiteLLM)
+            2. Configure models and settings
+            3. Initialize RAG engine
+            4. Parse documents with "Index for RAG" enabled
+            5. Start chatting!
             """)
             
             with gr.Row():
                 with gr.Column(scale=1):
                     gr.Markdown("### RAG Configuration")
                     
-                    # Get available models
-                    available_models = get_available_ollama_models()
-                    
-                    llm_dropdown = gr.Dropdown(
-                        choices=available_models if available_models else ["llama3.2:latest"],
-                        value=available_models[0] if available_models else "llama3.2:latest",
-                        label="LLM Model",
-                        info="Select Ollama model for chat"
+                    # Backend selection
+                    use_litellm = gr.Checkbox(
+                        label="Use LiteLLM AI Gateway",
+                        value=False,
+                        info="Enable to use LiteLLM for accessing remote LLMs"
                     )
                     
-                    embedding_dropdown = gr.Dropdown(
-                        choices=["granite-embedding:30m", "embeddinggemma:latest"] + available_models,
-                        value="granite-embedding:30m",
-                        label="Embedding Model",
-                        info="Select embedding model"
-                    )
+                    # LiteLLM Configuration (shown when enabled)
+                    with gr.Group(visible=False) as litellm_config:
+                        gr.Markdown("#### LiteLLM Configuration")
+                        litellm_api_base = gr.Textbox(
+                            label="LiteLLM API Base URL",
+                            value=LITELLM_API_BASE,
+                            placeholder="http://localhost:4000",
+                            info="URL of your LiteLLM proxy server"
+                        )
+                        litellm_api_key = gr.Textbox(
+                            label="LiteLLM API Key (optional)",
+                            value="",
+                            type="password",
+                            placeholder="Your API key if required",
+                            info="Leave empty if not required"
+                        )
+                        litellm_llm_model = gr.Textbox(
+                            label="LLM Model",
+                            value="gpt-3.5-turbo",
+                            placeholder="e.g., gpt-4, claude-3-sonnet, ollama/llama3.2",
+                            info="Model name as configured in LiteLLM"
+                        )
+                        litellm_embedding_model = gr.Textbox(
+                            label="Embedding Model",
+                            value="text-embedding-ada-002",
+                            placeholder="e.g., text-embedding-ada-002, ollama/granite-embedding:30m",
+                            info="Embedding model as configured in LiteLLM"
+                        )
+                    
+                    # Ollama Configuration (shown by default)
+                    with gr.Group(visible=True) as ollama_config:
+                        gr.Markdown("#### Ollama Configuration")
+                        # Get available models
+                        available_models = get_available_ollama_models()
+                        
+                        ollama_llm_dropdown = gr.Dropdown(
+                            choices=available_models if available_models else ["llama3.2:latest"],
+                            value=available_models[0] if available_models else "llama3.2:latest",
+                            label="LLM Model",
+                            info="Select Ollama model for chat"
+                        )
+                        
+                        ollama_embedding_dropdown = gr.Dropdown(
+                            choices=["granite-embedding:30m", "embeddinggemma:latest"] + available_models,
+                            value="granite-embedding:30m",
+                            label="Embedding Model",
+                            info="Select embedding model"
+                        )
                     
                     enable_tracing = gr.Checkbox(
                         label="Enable OpenLLMetry Tracing",
@@ -646,6 +697,19 @@ with gr.Blocks(title="Docling Parser with RAG") as app:
                     
                     init_rag_btn = gr.Button("🔧 Initialize RAG Engine", variant="primary")
                     rag_status = gr.Markdown()
+                    
+                    # Toggle visibility of config sections
+                    def toggle_backend_config(use_litellm_val):
+                        return {
+                            litellm_config: gr.update(visible=use_litellm_val),
+                            ollama_config: gr.update(visible=not use_litellm_val)
+                        }
+                    
+                    use_litellm.change(
+                        fn=toggle_backend_config,
+                        inputs=[use_litellm],
+                        outputs=[litellm_config, ollama_config]
+                    )
                     
                     gr.Markdown("### Chat Settings")
                     temperature = gr.Slider(0, 1, value=0.7, label="Temperature")
@@ -669,23 +733,35 @@ with gr.Blocks(title="Docling Parser with RAG") as app:
                         send_btn = gr.Button("📤 Send", variant="primary")
                         clear_btn = gr.Button("🗑️ Clear Chat", variant="secondary")
             
-            # RAG initialization
+            # RAG initialization with dynamic model selection
+            def init_rag_wrapper(use_litellm_val, litellm_base, litellm_key, litellm_llm, litellm_emb,
+                                ollama_llm, ollama_emb, tracing):
+                if use_litellm_val:
+                    return initialize_rag(litellm_emb, litellm_llm, tracing, True, litellm_base, litellm_key)
+                else:
+                    return initialize_rag(ollama_emb, ollama_llm, tracing, False, "", "")
+            
             init_rag_btn.click(
-                fn=initialize_rag,
-                inputs=[embedding_dropdown, llm_dropdown, enable_tracing],
+                fn=init_rag_wrapper,
+                inputs=[use_litellm, litellm_api_base, litellm_api_key, litellm_llm_model, litellm_embedding_model,
+                       ollama_llm_dropdown, ollama_embedding_dropdown, enable_tracing],
                 outputs=rag_status
             )
             
-            # Chat functionality
+            # Chat functionality with dynamic model selection
+            def chat_wrapper(query, use_litellm_val, litellm_llm, ollama_llm, temp, k):
+                model = litellm_llm if use_litellm_val else ollama_llm
+                return chat_with_documents(query, model, temp, k)
+            
             send_btn.click(
-                fn=chat_with_documents,
-                inputs=[query_input, llm_dropdown, temperature, top_k],
+                fn=chat_wrapper,
+                inputs=[query_input, use_litellm, litellm_llm_model, ollama_llm_dropdown, temperature, top_k],
                 outputs=[query_input, chatbot]
             )
             
             query_input.submit(
-                fn=chat_with_documents,
-                inputs=[query_input, llm_dropdown, temperature, top_k],
+                fn=chat_wrapper,
+                inputs=[query_input, use_litellm, litellm_llm_model, ollama_llm_dropdown, temperature, top_k],
                 outputs=[query_input, chatbot]
             )
             
@@ -736,16 +812,28 @@ with gr.Blocks(title="Docling Parser with RAG") as app:
     gr.Markdown("""
     ---
     ### 🚀 Quick Start
+    
+    #### Using Ollama (Local)
     1. **Start OpenSearch:** `podman-compose -f docker-compose-opensearch.yml up -d`
     2. **Verify Ollama:** `ollama list` to see available models
-    3. **Initialize RAG:** Go to "Chat with Documents" tab and click "Initialize RAG Engine"
+    3. **Initialize RAG:** Go to "Chat with Documents" tab, keep "Use LiteLLM" unchecked
     4. **Parse & Index:** Upload documents with "Index for RAG" enabled
     5. **Chat:** Ask questions about your documents!
+    
+    #### Using LiteLLM (Remote LLMs)
+    1. **Start OpenSearch:** `podman-compose -f docker-compose-opensearch.yml up -d`
+    2. **Start LiteLLM:** `docker-compose up -d litellm` (see docker-compose.yml)
+    3. **Configure LiteLLM:** Set up your models in LiteLLM config
+    4. **Initialize RAG:** Go to "Chat with Documents" tab, check "Use LiteLLM"
+    5. **Configure:** Enter LiteLLM API base URL and model names
+    6. **Parse & Index:** Upload documents with "Index for RAG" enabled
+    7. **Chat:** Ask questions about your documents!
     
     ### 🔗 Powered By
     - [Docling](https://github.com/docling-project/docling) - Document parsing
     - [OpenSearch](https://opensearch.org/) - Vector database
     - [Ollama](https://ollama.ai/) - Local LLM runtime
+    - [LiteLLM](https://github.com/BerriAI/litellm) - Unified LLM API gateway
     - [OpenLLMetry](https://github.com/traceloop/openllmetry) - LLM observability
     - [Gradio](https://www.gradio.app/) - Web interface
     """)

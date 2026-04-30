@@ -1,6 +1,6 @@
 # 🏭 Docling Factory - RAG Edition
 
-A powerful, production-ready document parsing and RAG (Retrieval-Augmented Generation) application built with [Docling](https://github.com/docling-project/docling), [OpenSearch](https://opensearch.org/), and [Ollama](https://ollama.ai/). Parse documents and **chat with them** using local LLMs.
+A powerful, production-ready document parsing and RAG (Retrieval-Augmented Generation) application built with [Docling](https://github.com/docling-project/docling), [OpenSearch](https://opensearch.org/), [Ollama](https://ollama.ai/), and [LiteLLM](https://github.com/BerriAI/litellm). Parse documents and **chat with them** using local or remote LLMs.
 
 ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -13,6 +13,7 @@ A powerful, production-ready document parsing and RAG (Retrieval-Augmented Gener
 - **[Getting Started](docs/GETTING_STARTED.md)** - Quick setup and first steps
 - **[Comprehensive Guide](docs/COMPREHENSIVE_GUIDE.md)** - Complete documentation
 - **[Architecture](docs/ARCHITECTURE.md)** - System design and workflows
+- **[LiteLLM Integration](docs/LITELLM_INTEGRATION.md)** - ⭐ NEW: Remote LLM access guide
 - **[Visual Dashboard](docs/VISUAL_DASHBOARD.md)** - Interactive metrics visualization
 - **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 - **[Python Compatibility](docs/PYTHON_COMPATIBILITY.md)** - Python version requirements
@@ -27,11 +28,18 @@ A powerful, production-ready document parsing and RAG (Retrieval-Augmented Gener
   - Semantic search with OpenSearch vector database
   - Context-aware responses with source citations
   
-- 🧠 **Local LLM Support**
-  - Use your own Ollama models (llama3.2, gemma3, granite, etc.)
-  - No cloud dependencies - 100% local
+- 🧠 **Flexible LLM Support**
+  - **Local**: Use Ollama models (llama3.2, gemma3, granite, etc.)
+  - **Remote**: Access 100+ LLMs via LiteLLM AI Gateway ⭐ NEW
+    - OpenAI (GPT-4, GPT-3.5)
+    - Anthropic (Claude)
+    - Azure OpenAI
+    - Google Vertex AI
+    - AWS Bedrock
+    - And many more!
   - Choose from multiple embedding models
   - Adjustable temperature and context settings
+  - Easy switching between local and remote LLMs
   
 - 🔍 **Semantic Search**
   - Vector-based document retrieval

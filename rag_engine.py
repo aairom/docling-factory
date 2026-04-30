@@ -15,8 +15,10 @@ from datetime import datetime
 from opensearchpy import OpenSearch, helpers
 from opensearchpy.exceptions import NotFoundError
 
-# Ollama
+# LLM Clients
 import ollama
+from litellm import completion, embedding
+import litellm
 
 # LangChain for RAG orchestration
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -72,6 +74,61 @@ class OllamaEmbeddings:
         for text in texts:
             embeddings.append(self.embed_query(text))
         return embeddings
+
+
+class LiteLLMEmbeddings:
+    """LiteLLM embeddings wrapper for unified access to multiple providers."""
+    
+    def __init__(self, model: str = "text-embedding-ada-002", api_base: str = None, api_key: str = None):
+        """
+        Initialize LiteLLM embeddings.
+        
+        Args:
+            model: Model name (e.g., 'text-embedding-ada-002', 'ollama/granite-embedding:30m')
+            api_base: Optional API base URL for LiteLLM proxy
+            api_key: Optional API key for authentication
+        """
+        self.model = model
+        self.api_base = api_base
+        self.api_key = api_key
+        
+        # Configure LiteLLM
+        if api_base:
+            litellm.api_base = api_base
+        if api_key:
+            litellm.api_key = api_key
+            
+        logger.info(f"Initialized LiteLLM embeddings with model: {model}")
+    
+    @task(name="generate_embedding_litellm")
+    def embed_query(self, text: str) -> List[float]:
+        """Generate embedding for a query text."""
+        try:
+            response = embedding(
+                model=self.model,
+                input=[text],
+                api_base=self.api_base,
+                api_key=self.api_key
+            )
+            return response['data'][0]['embedding']
+        except Exception as e:
+            logger.error(f"Error generating embedding with LiteLLM: {e}")
+            raise
+    
+    @task(name="generate_embeddings_batch_litellm")
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """Generate embeddings for multiple documents."""
+        try:
+            response = embedding(
+                model=self.model,
+                input=texts,
+                api_base=self.api_base,
+                api_key=self.api_key
+            )
+            return [item['embedding'] for item in response['data']]
+        except Exception as e:
+            logger.error(f"Error generating embeddings with LiteLLM: {e}")
+            raise
 
 
 class OllamaLLM:
@@ -145,6 +202,89 @@ Please answer the question based on the context provided above. If the context d
             raise
 
 
+class LiteLLMLLM:
+    """LiteLLM wrapper for unified access to multiple LLM providers."""
+    
+    def __init__(self, model: str = "gpt-3.5-turbo", api_base: str = None, api_key: str = None):
+        """
+        Initialize LiteLLM.
+        
+        Args:
+            model: Model name (e.g., 'gpt-3.5-turbo', 'ollama/llama3.2', 'claude-3-sonnet')
+            api_base: Optional API base URL for LiteLLM proxy
+            api_key: Optional API key for authentication
+        """
+        self.model = model
+        self.api_base = api_base
+        self.api_key = api_key
+        
+        # Configure LiteLLM
+        if api_base:
+            litellm.api_base = api_base
+        if api_key:
+            litellm.api_key = api_key
+            
+        logger.info(f"Initialized LiteLLM with model: {model}")
+    
+    @task(name="llm_generate_litellm")
+    def generate(self, prompt: str, context: str = "", temperature: float = 0.7) -> str:
+        """
+        Generate response using LiteLLM.
+        
+        Args:
+            prompt: User query
+            context: Retrieved context from documents
+            temperature: Generation temperature
+            
+        Returns:
+            Generated response
+        """
+        try:
+            full_prompt = f"""Context information:
+{context}
+
+Question: {prompt}
+
+Please answer the question based on the context provided above. If the context doesn't contain relevant information, say so."""
+
+            response = completion(
+                model=self.model,
+                messages=[{"role": "user", "content": full_prompt}],
+                temperature=temperature,
+                api_base=self.api_base,
+                api_key=self.api_key
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Error generating response with LiteLLM: {e}")
+            raise
+    
+    @task(name="llm_chat_litellm")
+    def chat(self, messages: List[Dict[str, str]], temperature: float = 0.7) -> str:
+        """
+        Chat with LiteLLM using message history.
+        
+        Args:
+            messages: List of message dicts with 'role' and 'content'
+            temperature: Generation temperature
+            
+        Returns:
+            Generated response
+        """
+        try:
+            response = completion(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                api_base=self.api_base,
+                api_key=self.api_key
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Error in chat with LiteLLM: {e}")
+            raise
+
+
 class RAGEngine:
     """
     RAG Engine using OpenSearch for vector storage and Ollama for LLM/embeddings.
@@ -160,7 +300,10 @@ class RAGEngine:
         embedding_model: str = "granite-embedding:30m",
         llm_model: str = "llama3.2:latest",
         index_name: str = "docling_documents",
-        enable_tracing: bool = True
+        enable_tracing: bool = True,
+        use_litellm: bool = False,
+        litellm_api_base: str = None,
+        litellm_api_key: str = None
     ):
         """
         Initialize RAG Engine.
@@ -172,9 +315,12 @@ class RAGEngine:
             opensearch_password: OpenSearch password
             ollama_base_url: Ollama server URL
             embedding_model: Ollama embedding model
-            llm_model: Ollama LLM model
+            llm_model: Ollama or LiteLLM model name
             index_name: OpenSearch index name
             enable_tracing: Enable OpenLLMetry tracing
+            use_litellm: Use LiteLLM instead of Ollama
+            litellm_api_base: LiteLLM API base URL (for proxy)
+            litellm_api_key: LiteLLM API key
         """
         # Initialize OpenLLMetry tracing with metrics collector
         self.metrics_collector = None
@@ -206,10 +352,25 @@ class RAGEngine:
         
         self.index_name = index_name
         self.ollama_base_url = ollama_base_url
+        self.use_litellm = use_litellm
         
-        # Initialize Ollama components
-        self.embeddings = OllamaEmbeddings(model=embedding_model, base_url=ollama_base_url)
-        self.llm = OllamaLLM(model=llm_model, base_url=ollama_base_url)
+        # Initialize LLM components based on configuration
+        if use_litellm:
+            logger.info("Using LiteLLM for embeddings and LLM")
+            self.embeddings = LiteLLMEmbeddings(
+                model=embedding_model,
+                api_base=litellm_api_base,
+                api_key=litellm_api_key
+            )
+            self.llm = LiteLLMLLM(
+                model=llm_model,
+                api_base=litellm_api_base,
+                api_key=litellm_api_key
+            )
+        else:
+            logger.info("Using Ollama for embeddings and LLM")
+            self.embeddings = OllamaEmbeddings(model=embedding_model, base_url=ollama_base_url)
+            self.llm = OllamaLLM(model=llm_model, base_url=ollama_base_url)
         
         # Text splitter for chunking
         # Reduced chunk size to avoid exceeding embedding model context length
@@ -493,10 +654,11 @@ class RAGEngine:
             return {}
     
     def health_check(self) -> Dict:
-        """Check health of OpenSearch and Ollama."""
+        """Check health of OpenSearch and LLM backend (Ollama or LiteLLM)."""
         health = {
             "opensearch": False,
-            "ollama": False,
+            "llm_backend": "litellm" if self.use_litellm else "ollama",
+            "backend_available": False,
             "embedding_model": False,
             "llm_model": False
         }
@@ -508,24 +670,42 @@ class RAGEngine:
         except Exception as e:
             logger.error(f"OpenSearch health check failed: {e}")
         
-        # Check Ollama and models
-        try:
-            client = ollama.Client(host=self.ollama_base_url)
-            response = client.list()
-            
-            # Extract model names from ListResponse
-            model_names = []
-            if hasattr(response, 'models'):
-                model_names = [m.model for m in response.models]
-            elif isinstance(response, dict) and 'models' in response:
-                model_names = [m.get('name', m.get('model', '')) for m in response['models']]
-            
-            health["ollama"] = True
-            health["embedding_model"] = self.embeddings.model in model_names
-            health["llm_model"] = self.llm.model in model_names
-            
-        except Exception as e:
-            logger.error(f"Ollama health check failed: {e}")
+        # Check LLM backend
+        if self.use_litellm:
+            # Check LiteLLM availability
+            try:
+                # Try a simple completion to verify LiteLLM is working
+                test_response = completion(
+                    model=self.llm.model,
+                    messages=[{"role": "user", "content": "test"}],
+                    max_tokens=1,
+                    api_base=self.llm.api_base,
+                    api_key=self.llm.api_key
+                )
+                health["backend_available"] = True
+                health["embedding_model"] = True  # Assume available if LLM works
+                health["llm_model"] = True
+            except Exception as e:
+                logger.error(f"LiteLLM health check failed: {e}")
+        else:
+            # Check Ollama and models
+            try:
+                client = ollama.Client(host=self.ollama_base_url)
+                response = client.list()
+                
+                # Extract model names from ListResponse
+                model_names = []
+                if hasattr(response, 'models'):
+                    model_names = [m.model for m in response.models]
+                elif isinstance(response, dict) and 'models' in response:
+                    model_names = [m.get('name', m.get('model', '')) for m in response['models']]
+                
+                health["backend_available"] = True
+                health["embedding_model"] = self.embeddings.model in model_names
+                health["llm_model"] = self.llm.model in model_names
+                
+            except Exception as e:
+                logger.error(f"Ollama health check failed: {e}")
         
         return health
 

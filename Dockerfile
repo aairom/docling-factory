@@ -56,6 +56,8 @@ ENV PYTHONUNBUFFERED=1
 ENV OPENSEARCH_HOST=opensearch
 ENV OPENSEARCH_PORT=9200
 ENV OLLAMA_BASE_URL=http://host.docker.internal:11434
+ENV LITELLM_API_BASE=http://litellm:4000
+ENV LITELLM_API_KEY=sk-1234
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

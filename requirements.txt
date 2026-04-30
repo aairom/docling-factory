@@ -50,9 +50,10 @@ opensearch-py>=2.4.0  # OpenSearch Python client
 langchain>=0.1.0  # LangChain for RAG orchestration
 langchain-community>=0.0.20  # Community integrations
 
-# Ollama Integration
+# LLM Integration
 ollama>=0.1.0  # Ollama Python client
-httpx>=0.24.0  # Required for Ollama client
+litellm>=1.0.0  # LiteLLM AI Gateway for unified LLM access
+httpx>=0.24.0  # Required for Ollama and LiteLLM clients
 
 # Embeddings and Vector Operations
 sentence-transformers>=2.2.0  # For fallback embeddings

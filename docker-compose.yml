@@ -23,6 +23,51 @@ services:
       retries: 5
       start_period: 60s
 
+  # LiteLLM AI Gateway for unified LLM access
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: litellm
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml
+    environment:
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-1234}
+      - DATABASE_URL=postgresql://llmproxy:dbpassword9090@litellm-db:5432/litellm
+    command: --config /app/config.yaml --port 4000 --num_workers 4
+    networks:
+      - docling-network
+    depends_on:
+      litellm-db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # PostgreSQL database for LiteLLM
+  litellm-db:
+    image: postgres:15-alpine
+    container_name: litellm-db
+    environment:
+      - POSTGRES_DB=litellm
+      - POSTGRES_USER=llmproxy
+      - POSTGRES_PASSWORD=dbpassword9090
+    volumes:
+      - litellm-db-data:/var/lib/postgresql/data
+    networks:
+      - docling-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U llmproxy -d litellm"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   # Ollama for local LLM (Note: Ollama should be run on host machine)
   # This is a placeholder - Ollama is typically run directly on the host
   # Use host.docker.internal to connect from containers to host Ollama
@@ -46,6 +91,8 @@ services:
       - OPENSEARCH_HOST=opensearch
       - OPENSEARCH_PORT=9200
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - LITELLM_API_BASE=http://litellm:4000
+      - LITELLM_API_KEY=${LITELLM_MASTER_KEY:-sk-1234}
     networks:
       - docling-network
     depends_on:
@@ -79,6 +126,8 @@ services:
       - OPENSEARCH_HOST=opensearch
       - OPENSEARCH_PORT=9200
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - LITELLM_API_BASE=http://litellm:4000
+      - LITELLM_API_KEY=${LITELLM_MASTER_KEY:-sk-1234}
     networks:
       - docling-network
     depends_on:
@@ -103,6 +152,8 @@ services:
 
 volumes:
   opensearch-data:
+    driver: local
+  litellm-db-data:
     driver: local
   input:
     driver: local
