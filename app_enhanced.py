@@ -83,6 +83,12 @@ def initialize_rag(embedding_model: str, llm_model: str, enable_tracing: bool = 
     try:
         backend_name = "LiteLLM" if use_litellm else "Ollama"
         
+        # Provide helpful error messages for common issues
+        if use_litellm:
+            api_base = litellm_api_base if litellm_api_base else LITELLM_API_BASE
+            if not api_base or api_base == "http://localhost:4000":
+                logger.warning("Using default LiteLLM URL. Make sure LiteLLM service is running.")
+        
         rag_engine = RAGEngine(
             opensearch_host=OPENSEARCH_HOST,
             opensearch_port=OPENSEARCH_PORT,
@@ -94,11 +100,89 @@ def initialize_rag(embedding_model: str, llm_model: str, enable_tracing: bool = 
             litellm_api_base=litellm_api_base if litellm_api_base else LITELLM_API_BASE,
             litellm_api_key=litellm_api_key if litellm_api_key else LITELLM_API_KEY
         )
-        return f"✅ RAG Engine initialized with {backend_name}\n- LLM: {llm_model}\n- Embeddings: {embedding_model}"
+        
+        # Perform health check
+        health = rag_engine.health_check()
+        
+        status_msg = f"✅ RAG Engine initialized with {backend_name}\n"
+        status_msg += f"- LLM: {llm_model}\n"
+        status_msg += f"- Embeddings: {embedding_model}\n\n"
+        status_msg += "**Health Check:**\n"
+        status_msg += f"- OpenSearch: {'✅ Connected' if health.get('opensearch') else '❌ Disconnected'}\n"
+        status_msg += f"- {backend_name}: {'✅ Available' if health.get('backend_available') else '❌ Unavailable'}\n"
+        
+        if not health.get('opensearch'):
+            status_msg += "\n⚠️ **OpenSearch is not available.** Start it with:\n"
+            status_msg += "`docker-compose up -d opensearch`\n"
+        
+        if use_litellm and not health.get('backend_available'):
+            status_msg += "\n⚠️ **LiteLLM is not available.** Start it with:\n"
+            status_msg += "`docker-compose up -d litellm litellm-db`\n"
+            status_msg += f"\nMake sure LiteLLM is accessible at: {litellm_api_base if litellm_api_base else LITELLM_API_BASE}\n"
+        
+        if not use_litellm and not health.get('backend_available'):
+            status_msg += "\n⚠️ **Ollama is not available.** Start it with:\n"
+            status_msg += "`ollama serve`\n"
+        
+        return status_msg
+        
+    except ConnectionError as e:
+        error_msg = f"❌ **Connection Error**\n\n"
+        if use_litellm:
+            error_msg += f"Cannot connect to LiteLLM at {litellm_api_base if litellm_api_base else LITELLM_API_BASE}\n\n"
+            error_msg += "**To fix:**\n"
+            error_msg += "1. Start LiteLLM services:\n"
+            error_msg += "   ```bash\n"
+            error_msg += "   docker-compose up -d litellm-db litellm\n"
+            error_msg += "   ```\n"
+            error_msg += "2. Wait 10-15 seconds for services to start\n"
+            error_msg += "3. Try initializing again\n\n"
+            error_msg += f"**Error details:** {str(e)}"
+        else:
+            error_msg += f"Cannot connect to Ollama at {OLLAMA_BASE_URL}\n\n"
+            error_msg += "**To fix:**\n"
+            error_msg += "1. Start Ollama:\n"
+            error_msg += "   ```bash\n"
+            error_msg += "   ollama serve\n"
+            error_msg += "   ```\n"
+            error_msg += "2. Pull required models:\n"
+            error_msg += f"   ```bash\n"
+            error_msg += f"   ollama pull {llm_model}\n"
+            error_msg += f"   ollama pull {embedding_model}\n"
+            error_msg += "   ```\n\n"
+            error_msg += f"**Error details:** {str(e)}"
+        
+        logger.error(f"Connection error initializing RAG: {e}")
+        return error_msg
+        
     except Exception as e:
         logger.error(f"Error initializing RAG: {e}")
         import traceback
-        return f"❌ Error: {str(e)}\n\n{traceback.format_exc()}"
+        error_detail = traceback.format_exc()
+        
+        error_msg = f"❌ **Initialization Error**\n\n"
+        error_msg += f"**Error:** {str(e)}\n\n"
+        
+        # Check if it's a connection-related error
+        if "Connection" in str(e) or "connection" in str(e).lower():
+            if use_litellm:
+                error_msg += "**Possible cause:** LiteLLM service is not running or not accessible.\n\n"
+                error_msg += "**To fix:**\n"
+                error_msg += "```bash\n"
+                error_msg += "docker-compose up -d litellm-db litellm\n"
+                error_msg += "```\n"
+            else:
+                error_msg += "**Possible cause:** Ollama or OpenSearch is not running.\n\n"
+                error_msg += "**To fix:**\n"
+                error_msg += "```bash\n"
+                error_msg += "# Start OpenSearch\n"
+                error_msg += "docker-compose up -d opensearch\n\n"
+                error_msg += "# Start Ollama\n"
+                error_msg += "ollama serve\n"
+                error_msg += "```\n"
+        
+        error_msg += f"\n**Full traceback:**\n```\n{error_detail}\n```"
+        return error_msg
 
 
 def get_available_ollama_models() -> List[str]:

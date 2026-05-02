@@ -78,3 +78,4 @@ htmlcov/
 .env/
 .env.local/
 _archive/
+_docs/
