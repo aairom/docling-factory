@@ -79,3 +79,4 @@ htmlcov/
 .env.local/
 _archive/
 _docs/
+input/
