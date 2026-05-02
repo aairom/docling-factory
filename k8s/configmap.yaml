@@ -38,31 +38,31 @@ data:
       - model_name: gpt-4
         litellm_params:
           model: gpt-4
-          api_key: os.environ/OPENAI_API_KEY
+          api_key: os.environ/OPENAI_API_KEY  # Never hardcode API keys
       
       - model_name: gpt-3.5-turbo
         litellm_params:
           model: gpt-3.5-turbo
-          api_key: os.environ/OPENAI_API_KEY
+          api_key: os.environ/OPENAI_API_KEY  # Never hardcode API keys
       
       - model_name: text-embedding-ada-002
         litellm_params:
           model: text-embedding-ada-002
-          api_key: os.environ/OPENAI_API_KEY
+          api_key: os.environ/OPENAI_API_KEY  # Never hardcode API keys
 
       # Anthropic Claude (requires ANTHROPIC_API_KEY secret)
       - model_name: claude-3-sonnet
         litellm_params:
           model: claude-3-sonnet-20240229
-          api_key: os.environ/ANTHROPIC_API_KEY
+          api_key: os.environ/ANTHROPIC_API_KEY  # Never hardcode API keys
       
       - model_name: claude-3-opus
         litellm_params:
           model: claude-3-opus-20240229
-          api_key: os.environ/ANTHROPIC_API_KEY
+          api_key: os.environ/ANTHROPIC_API_KEY  # Never hardcode API keys
 
     general_settings:
-      master_key: os.environ/LITELLM_MASTER_KEY
+      master_key: os.environ/LITELLM_MASTER_KEY  # REQUIRED: Set via Kubernetes secret
       database_url: os.environ/DATABASE_URL
     
     router_settings:

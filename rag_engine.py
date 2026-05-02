@@ -1,3 +1,4 @@
+# rag_engine.py
 """
 RAG Engine Module
 Implements Retrieval-Augmented Generation using OpenSearch and Ollama.

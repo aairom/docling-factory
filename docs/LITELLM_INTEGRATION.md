@@ -87,14 +87,14 @@ model_list:
   - model_name: gpt-4
     litellm_params:
       model: gpt-4
-      api_key: sk-your-openai-key-here
+      api_key: os.environ/OPENAI_API_KEY  # NEVER hardcode keys
 ```
 
 Or set environment variables:
 
 ```bash
-export OPENAI_API_KEY="sk-your-key-here"
-export ANTHROPIC_API_KEY="sk-ant-your-key-here"
+export OPENAI_API_KEY="sk-****-your-actual-key"
+export ANTHROPIC_API_KEY="sk-ant-****-your-actual-key"
 ```
 
 ### 3. Use in Application
@@ -121,13 +121,13 @@ model_list:
   - model_name: gpt-4
     litellm_params:
       model: gpt-4
-      api_key: os.environ/OPENAI_API_KEY
+      api_key: os.environ/OPENAI_API_KEY  # Never hardcode API keys
   
   # Anthropic Claude
   - model_name: claude-3-sonnet
     litellm_params:
       model: claude-3-sonnet-20240229
-      api_key: os.environ/ANTHROPIC_API_KEY
+      api_key: os.environ/ANTHROPIC_API_KEY  # Never hardcode API keys
   
   # Local Ollama (via LiteLLM)
   - model_name: ollama/llama3.2
@@ -154,12 +154,12 @@ Set these environment variables for the application:
 ```bash
 # LiteLLM Configuration
 LITELLM_API_BASE=http://localhost:4000
-LITELLM_API_KEY=sk-1234  # Master key from litellm_config.yaml
+LITELLM_API_KEY=sk-****-change-this  # Master key from litellm_config.yaml
 
-# Provider API Keys (for LiteLLM)
-OPENAI_API_KEY=sk-your-openai-key
-ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
-AZURE_API_KEY=your-azure-key
+# Provider API Keys (for LiteLLM) - NEVER commit real keys
+OPENAI_API_KEY=sk-****-your-actual-key
+ANTHROPIC_API_KEY=sk-ant-****-your-actual-key
+AZURE_API_KEY=****-your-actual-key
 AZURE_API_BASE=https://your-resource.openai.azure.com
 AZURE_API_VERSION=2023-05-15
 ```
@@ -179,7 +179,7 @@ services:
     volumes:
       - ./litellm_config.yaml:/app/config.yaml
     environment:
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-1234}
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-****-change-this}
       - DATABASE_URL=postgresql://llmproxy:dbpassword9090@litellm-db:5432/litellm
     depends_on:
       - litellm-db
@@ -270,12 +270,12 @@ curl http://localhost:4000/health
 - model_name: gpt-4
   litellm_params:
     model: gpt-4
-    api_key: os.environ/OPENAI_API_KEY
+    api_key: os.environ/OPENAI_API_KEY  # Never hardcode API keys
 
 - model_name: text-embedding-ada-002
   litellm_params:
     model: text-embedding-ada-002
-    api_key: os.environ/OPENAI_API_KEY
+    api_key: os.environ/OPENAI_API_KEY  # Never hardcode API keys
 ```
 
 ### Anthropic Claude
@@ -284,7 +284,7 @@ curl http://localhost:4000/health
 - model_name: claude-3-opus
   litellm_params:
     model: claude-3-opus-20240229
-    api_key: os.environ/ANTHROPIC_API_KEY
+    api_key: os.environ/ANTHROPIC_API_KEY  # Never hardcode API keys
 ```
 
 ### Azure OpenAI
@@ -293,7 +293,7 @@ curl http://localhost:4000/health
 - model_name: azure-gpt-4
   litellm_params:
     model: azure/gpt-4
-    api_key: os.environ/AZURE_API_KEY
+    api_key: os.environ/AZURE_API_KEY  # Never hardcode API keys
     api_base: os.environ/AZURE_API_BASE
     api_version: os.environ/AZURE_API_VERSION
 ```

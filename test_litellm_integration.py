@@ -149,7 +149,7 @@ def test_rag_engine_initialization():
                 enable_tracing=False,
                 use_litellm=True,
                 litellm_api_base=os.getenv("LITELLM_API_BASE", "http://localhost:4000"),
-                litellm_api_key=os.getenv("LITELLM_API_KEY", "sk-1234")
+                litellm_api_key=os.getenv("LITELLM_API_KEY", "sk-****")
             )
             print("  ✅ RAG engine initialized with LiteLLM backend")
         except Exception as e:

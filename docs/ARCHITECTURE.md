@@ -550,7 +550,7 @@ edf-docling/
 | `OPENSEARCH_PORT` | 9200 | OpenSearch port |
 | `OLLAMA_BASE_URL` | http://localhost:11434 | Ollama API base URL |
 | `LITELLM_API_BASE` | http://localhost:4000 | LiteLLM API base URL ⭐ NEW |
-| `LITELLM_API_KEY` | sk-1234 | LiteLLM API key ⭐ NEW |
+| `LITELLM_API_KEY` | sk-****-change-this | LiteLLM API key (NEVER hardcode real keys) ⭐ NEW |
 
 ### Parser Configuration
 

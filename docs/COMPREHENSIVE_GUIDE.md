@@ -162,8 +162,8 @@ export OPENSEARCH_PASSWORD=admin
 # Ollama Settings
 export OLLAMA_BASE_URL=http://localhost:11434
 
-# OpenLLMetry Settings (optional)
-export TRACELOOP_API_KEY=your_key_here
+# OpenLLMetry Settings (optional) - NEVER commit real keys
+export TRACELOOP_API_KEY=****-your-actual-key
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 ```
 

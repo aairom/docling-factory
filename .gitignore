@@ -70,14 +70,24 @@ htmlcov/
 # pyenv
 .python-version
 
-# Environment variables
+# Environment variables and secrets
 .env
+.env.*
 .env.local
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+config/credentials.json
 
+# Folders with underscores (potential sensitive data)
 *_/
+_*/
 .env/
 .env.local/
 _archive/
 _docs/
 input/
 _blog/
+_/*

@@ -181,12 +181,12 @@ model_list:
   - model_name: gpt-3.5-turbo
     litellm_params:
       model: gpt-3.5-turbo
-      api_key: os.environ/OPENAI_API_KEY
+      api_key: os.environ/OPENAI_API_KEY  # Never hardcode API keys
   
   - model_name: text-embedding-ada-002
     litellm_params:
       model: text-embedding-ada-002
-      api_key: os.environ/OPENAI_API_KEY
+      api_key: os.environ/OPENAI_API_KEY  # Never hardcode API keys
 ```
 
 ### Environment Variables
@@ -194,15 +194,15 @@ model_list:
 Set these in your `.env` file or export them:
 
 ```bash
-# OpenAI (if using OpenAI models)
-export OPENAI_API_KEY=sk-your-key-here
+# OpenAI (if using OpenAI models) - NEVER commit real keys
+export OPENAI_API_KEY=sk-****-your-actual-key
 
-# Anthropic (if using Claude)
-export ANTHROPIC_API_KEY=sk-ant-your-key-here
+# Anthropic (if using Claude) - NEVER commit real keys
+export ANTHROPIC_API_KEY=sk-ant-****-your-actual-key
 
 # LiteLLM
 export LITELLM_API_BASE=http://localhost:4000
-export LITELLM_API_KEY=sk-1234
+export LITELLM_API_KEY=sk-****-change-this
 ```
 
 ## Testing the Integration

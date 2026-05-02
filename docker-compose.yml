@@ -32,7 +32,7 @@ services:
     volumes:
       - ./litellm_config.yaml:/app/config.yaml
     environment:
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-1234}
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-****-change-this}
       - DATABASE_URL=postgresql://llmproxy:dbpassword9090@litellm-db:5432/litellm
     command: --config /app/config.yaml --port 4000 --num_workers 4
     networks:
@@ -92,7 +92,7 @@ services:
       - OPENSEARCH_PORT=9200
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - LITELLM_API_BASE=http://litellm:4000
-      - LITELLM_API_KEY=${LITELLM_MASTER_KEY:-sk-1234}
+      - LITELLM_API_KEY=${LITELLM_MASTER_KEY:-sk-****-change-this}
     networks:
       - docling-network
     depends_on:
@@ -127,7 +127,7 @@ services:
       - OPENSEARCH_PORT=9200
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - LITELLM_API_BASE=http://litellm:4000
-      - LITELLM_API_KEY=${LITELLM_MASTER_KEY:-sk-1234}
+      - LITELLM_API_KEY=${LITELLM_MASTER_KEY:-sk-****-change-this}
     networks:
       - docling-network
     depends_on:

@@ -206,7 +206,7 @@ RUN pip install --no-cache-dir --user \
 **Environment Variables:**
 ```dockerfile
 ENV LITELLM_API_BASE=http://litellm:4000
-ENV LITELLM_API_KEY=sk-1234
+ENV LITELLM_API_KEY=sk-****-change-this
 ```
 
 ## Best Practices

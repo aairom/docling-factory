@@ -1,3 +1,4 @@
+# docling_parser.py
 """
 Docling Parser Module - Enhanced Version
 Handles document parsing using the Docling library with support for:
