@@ -1,3 +1,4 @@
+# metrics_collector.py
 """
 OpenLLMetry Metrics Collector
 Collects and aggregates metrics from OpenTelemetry traces for dashboard display.
